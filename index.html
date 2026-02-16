@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貴金属買取相場シミュレーター</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .price-table th { @apply bg-gray-100 text-gray-600 font-bold py-2 px-3 text-left text-xs uppercase tracking-wider; }
+        .price-table td { @apply py-2 px-3 border-b border-gray-100 text-sm transition-colors duration-200; }
+        .price-table tr { @apply cursor-pointer; } 
+        .price-table tr:hover td { @apply bg-blue-50; }
+        .price-table tr.selected td { @apply bg-indigo-600 text-white border-indigo-600; }
+        .price-table tr.selected td input { @apply text-white; }
+        .price-table tr.selected td .row-label { @apply text-white; }
+        
+        input[type="number"]::-webkit-inner-spin-button, 
+        input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900 pb-20">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white py-4 shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold flex items-center gap-2">
+                    <i data-lucide="gem" class="text-yellow-500"></i>
+                    貴金属買取プロツール
+                </h1>
+                <p class="text-[10px] text-gray-400">Net Japan Partner Reference System</p>
+            </div>
+            <div id="status-badge" class="bg-indigo-600 px-3 py-1 rounded-full text-xs text-white font-bold shadow-sm flex items-center gap-1">
+                <i data-lucide="check-circle" class="w-3 h-3"></i>
+                <span id="status-text">稼働中</span>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 max-w-6xl mt-6 space-y-6">
+        
+        <!-- Smart Import Area (Primary) -->
+        <div class="bg-white border-2 border-indigo-600 rounded-xl shadow-lg p-5 animate-fade-in">
+            <div class="flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-bold text-gray-800 flex items-center gap-2 text-lg">
+                        <i data-lucide="clipboard-copy" class="text-indigo-600"></i>
+                        価格更新（コピー＆ペースト）
+                    </h3>
+                    <a href="https://www.net-japan.co.jp/precious_metal_partner" target="_blank" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 text-sm shadow-sm">
+                        <i data-lucide="external-link" class="w-4 h-4"></i> 公式サイトを開く
+                    </a>
+                </div>
+                
+                <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
+                    <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                    <div>
+                        <strong>解析精度を向上させました:</strong><br>
+                        公式サイトの価格表全体をコピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付け（Ctrl+V）てください。<br>
+                        品位の数字（1000や925など）と価格を区別して読み取ります。
+                    </div>
+                </div>
+
+                <div class="relative group">
+                    <textarea id="import-text" 
+                        placeholder="ここに貼り付け (Ctrl+V) して解析ボタンを押す" 
+                        class="w-full p-4 pr-32 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 h-32 text-sm font-mono resize-none transition-all placeholder-gray-400"></textarea>
+                    
+                    <button onclick="parseImportText()" class="absolute bottom-4 right-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 hover:shadow-lg transition-all flex items-center gap-2">
+                        <i data-lucide="wand-2" class="w-4 h-4"></i> 解析・反映
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market Rates Display (Grid Layout for 4 metals) -->
+        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Gold -->
+            <div class="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden relative group p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-bold text-yellow-700 uppercase tracking-wider">Gold (K24 Ingot)</span>
+                    <div class="bg-yellow-100 p-1 rounded text-yellow-600"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <input type="text" id="manual-gold" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('gold')">
+                    <span class="text-sm text-gray-500">円/g</span>
+                </div>
+            </div>
+
+            <!-- Platinum -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden relative group p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-bold text-slate-500 uppercase tracking-wider">Platinum (Pt1000)</span>
+                    <div class="bg-slate-100 p-1 rounded text-slate-600"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <input type="text" id="manual-platinum" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('platinum')">
+                    <span class="text-sm text-gray-500">円/g</span>
+                </div>
+            </div>
+
+            <!-- Palladium -->
+            <div class="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden relative group p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-bold text-orange-700 uppercase tracking-wider">Palladium (Ingot)</span>
+                    <div class="bg-orange-100 p-1 rounded text-orange-600"><i data-lucide="trending-up" class="w-4 h-4"></i></div>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <input type="text" id="manual-palladium" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('palladium')">
+                    <span class="text-sm text-gray-500">円/g</span>
+                </div>
+            </div>
+
+            <!-- Silver -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative group p-4">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-sm font-bold text-gray-500 uppercase tracking-wider">Silver (Sv1000)</span>
+                    <div class="bg-gray-100 p-1 rounded text-gray-600"><i data-lucide="trending-down" class="w-4 h-4"></i></div>
+                </div>
+                <div class="flex items-baseline gap-1">
+                    <input type="text" id="manual-silver" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('silver')">
+                    <span class="text-sm text-gray-500">円/g</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+            
+            <!-- LEFT: Price Tables -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- GOLD Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-yellow-50 to-white px-4 py-2 border-b border-yellow-100 flex justify-between items-center">
+                        <h2 class="font-bold text-yellow-700 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-yellow-500 rounded-full"></span> 金 (GOLD)
+                        </h2>
+                    </div>
+                    <table class="w-full price-table">
+                        <tbody id="table-gold"></tbody>
+                    </table>
+                </div>
+
+                <!-- PLATINUM Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-slate-50 to-white px-4 py-2 border-b border-slate-100 flex justify-between items-center">
+                        <h2 class="font-bold text-slate-700 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-slate-500 rounded-full"></span> プラチナ (PLATINUM)
+                        </h2>
+                    </div>
+                    <table class="w-full price-table">
+                        <tbody id="table-platinum"></tbody>
+                    </table>
+                </div>
+
+                <!-- PALLADIUM Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-orange-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-orange-50 to-white px-4 py-2 border-b border-orange-100 flex justify-between items-center">
+                        <h2 class="font-bold text-orange-700 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-orange-500 rounded-full"></span> パラジウム (PALLADIUM)
+                        </h2>
+                    </div>
+                    <table class="w-full price-table">
+                        <tbody id="table-palladium"></tbody>
+                    </table>
+                </div>
+
+                <!-- SILVER Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div class="bg-gray-50 px-4 py-2 border-b border-gray-100">
+                        <h2 class="font-bold text-gray-600 text-sm">銀 (SILVER)</h2>
+                    </div>
+                    <table class="w-full price-table">
+                        <tbody id="table-silver"></tbody>
+                    </table>
+                </div>
+
+            </div>
+
+            <!-- RIGHT: Calculator (Sticky) -->
+            <div class="lg:col-span-5 lg:sticky lg:top-24">
+                <div class="bg-indigo-900 text-white rounded-2xl shadow-xl overflow-hidden ring-4 ring-indigo-50/50">
+                    <div class="p-6">
+                        <h2 class="text-lg font-bold flex items-center gap-2 mb-6 text-indigo-100">
+                            <i data-lucide="calculator" class="w-5 h-5"></i> 査定計算
+                        </h2>
+
+                        <!-- Selected Item Display -->
+                        <div class="mb-6 bg-indigo-800/50 rounded-xl p-4 border border-indigo-700">
+                            <label class="block text-xs text-indigo-300 mb-1">選択中の品位</label>
+                            <div class="flex justify-between items-end">
+                                <div id="calc-metal-name" class="text-2xl font-bold">未選択</div>
+                                <div class="text-right">
+                                    <div class="text-xs text-indigo-300">単価</div>
+                                    <div id="calc-unit-price" class="text-xl font-mono">¥ 0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Weight Input -->
+                        <div class="mb-6">
+                            <label class="block text-xs font-bold text-indigo-200 mb-2">重量 (g)</label>
+                            <div class="relative">
+                                <input type="number" id="calc-weight" step="0.01" placeholder="0.00" class="w-full p-4 pr-12 rounded-xl bg-white text-indigo-900 text-3xl font-bold outline-none focus:ring-4 focus:ring-indigo-500 transition-all placeholder-gray-300 text-right">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold">g</span>
+                            </div>
+                        </div>
+
+                        <!-- Margin Slider -->
+                        <div class="mb-8">
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-indigo-200">手数料 (利益率)</label>
+                                <span id="margin-display" class="text-sm font-bold text-indigo-300">10%</span>
+                            </div>
+                            <input type="range" id="calc-margin" min="0" max="50" value="10" class="w-full h-2 bg-indigo-800 rounded-lg appearance-none cursor-pointer accent-indigo-400">
+                        </div>
+
+                        <!-- Result -->
+                        <div class="border-t border-indigo-700 pt-6 text-center">
+                            <label class="block text-xs text-indigo-300 mb-2 uppercase tracking-widest">お支払金額</label>
+                            <div id="calc-total" class="text-5xl font-black tracking-tight text-white mb-2">¥ 0</div>
+                            <p class="text-[10px] text-indigo-400" id="calc-formula">単価 × 重量 × (1 - 手数料)</p>
+                        </div>
+                    </div>
+                    
+                    <button onclick="resetCalc()" class="w-full bg-indigo-800 hover:bg-indigo-700 text-indigo-200 py-3 text-xs font-bold transition-colors flex justify-center gap-2 items-center">
+                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> リセット
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl scale-95 opacity-0 transition-all duration-200 transform" id="modal-content">
+            <div id="modal-icon" class="mb-4 flex justify-center text-indigo-600"></div>
+            <h3 id="modal-title" class="text-lg font-bold mb-2 text-gray-800"></h3>
+            <div id="modal-text" class="text-sm text-gray-600 mb-6 leading-relaxed max-h-60 overflow-y-auto"></div>
+            <button onclick="closeModal()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">閉じる</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration: Net Japan Items ---
+        const METAL_ITEMS = {
+            gold: [
+                { id: 'k24_ig', label: 'インゴット (K24)', match: ['K24IG', 'INGOT', 'インゴット', '純金'], exclude: [] },
+                { id: 'k24', label: 'K24', match: ['K24', '999'], exclude: ['IG', 'INGOT', 'インゴット'] },
+                { id: 'k22', label: 'K22', match: ['K22', '916'], exclude: [] },
+                { id: 'k21_6', label: 'K21.6', match: ['K21.6', '900'], exclude: ['PT'] },
+                { id: 'k20', label: 'K20', match: ['K20', '835'], exclude: [] },
+                { id: 'k18', label: 'K18', match: ['K18', '750'], exclude: [] },
+                { id: 'k14', label: 'K14', match: ['K14', '585'], exclude: [] },
+                { id: 'k12', label: 'K12', match: ['K12', '500'], exclude: [] },
+                { id: 'k10', label: 'K10', match: ['K10', '416'], exclude: [] },
+                { id: 'k9', label: 'K9', match: ['K9', '375'], exclude: [] },
+            ],
+            platinum: [
+                { id: 'pt1000_ig', label: 'インゴット (Pt1000)', match: ['PT1000IG', 'INGOT', 'インゴット', 'PTIG'], exclude: [] },
+                { id: 'pt1000', label: 'Pt1000', match: ['PT1000', 'PT999'], exclude: ['IG', 'INGOT', 'インゴット'] },
+                { id: 'pt950', label: 'Pt950', match: ['PT950'], exclude: [] },
+                { id: 'pt900', label: 'Pt900', match: ['PT900'], exclude: [] },
+                { id: 'pt850', label: 'Pt850', match: ['PT850'], exclude: [] },
+            ],
+            palladium: [
+                { id: 'pd_ig', label: 'インゴット (Pd)', match: ['PD', 'INGOT', 'パラジウム'], exclude: [] },
+            ],
+            silver: [
+                { id: 'sv1000_ig', label: 'インゴット (Sv1000)', match: ['SV1000IG', 'INGOT', 'インゴット'], exclude: [] },
+                { id: 'sv1000', label: 'Sv1000', match: ['SV1000', 'SV999'], exclude: ['IG', 'INGOT', 'インゴット'] },
+                { id: 'sv925', label: 'Sv925', match: ['SV925'], exclude: [] },
+            ]
+        };
+
+        let currentSelection = { id: null, price: 0, name: "未選択" };
+
+        window.onload = () => {
+            lucide.createIcons();
+            generateTables();
+            
+            document.getElementById('calc-weight').addEventListener('input', calculate);
+            document.getElementById('calc-margin').addEventListener('input', (e) => {
+                document.getElementById('margin-display').innerText = `${e.target.value}%`;
+                calculate();
+            });
+        };
+
+        function generateTables() {
+            createTableRows('gold', 'table-gold');
+            createTableRows('platinum', 'table-platinum');
+            createTableRows('silver', 'table-silver');
+            createTableRows('palladium', 'table-palladium');
+        }
+
+        function createTableRows(type, tableId) {
+            const container = document.getElementById(tableId);
+            METAL_ITEMS[type].forEach(item => {
+                const tr = document.createElement('tr');
+                tr.id = `row-${item.id}`;
+                tr.onclick = () => selectItem(item.id, item.label);
+                
+                tr.innerHTML = `
+                    <td class="font-bold text-gray-700 row-label">${item.label}</td>
+                    <td>
+                        <input type="text" id="price-${item.id}" 
+                            class="w-full bg-transparent outline-none border-b border-transparent focus:border-indigo-500 font-mono text-right font-bold text-gray-800 pointer-events-none" 
+                            placeholder="-" readonly>
+                    </td>
+                    <td class="text-center text-gray-400 icon-cell">
+                        <i data-lucide="chevron-right" class="w-4 h-4 inline opacity-0 group-hover:opacity-100 transition-opacity"></i>
+                    </td>
+                `;
+                container.appendChild(tr);
+            });
+            lucide.createIcons();
+        }
+
+        function selectItem(id, name) {
+            document.querySelectorAll('tr').forEach(r => {
+                r.classList.remove('selected');
+                const icon = r.querySelector('.icon-cell i');
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'chevron-right');
+                    icon.classList.remove('opacity-100', 'text-white');
+                    icon.classList.add('opacity-0');
+                }
+            });
+
+            const row = document.getElementById(`row-${id}`);
+            if(row) {
+                row.classList.add('selected');
+                const icon = row.querySelector('.icon-cell i');
+                if (icon) {
+                    icon.setAttribute('data-lucide', 'check-circle');
+                    icon.classList.remove('opacity-0');
+                    icon.classList.add('opacity-100', 'text-white');
+                }
+            }
+            
+            lucide.createIcons();
+
+            const priceInput = document.getElementById(`price-${id}`);
+            const price = parseInt(priceInput.value.replace(/,/g, '')) || 0;
+
+            currentSelection = { id, price, name };
+            document.getElementById('calc-metal-name').innerText = name;
+            document.getElementById('calc-unit-price').innerText = `¥ ${price.toLocaleString()}`;
+            document.getElementById('calc-weight').focus();
+            calculate();
+        }
+
+        function calculate() {
+            const weight = parseFloat(document.getElementById('calc-weight').value) || 0;
+            const margin = parseInt(document.getElementById('calc-margin').value) || 0;
+            
+            if (currentSelection.price === 0) {
+                document.getElementById('calc-total').innerText = "¥ 0";
+                return;
+            }
+
+            const total = Math.floor(currentSelection.price * weight * (1 - margin / 100));
+            document.getElementById('calc-total').innerText = `¥ ${total.toLocaleString()}`;
+            const unit = currentSelection.price.toLocaleString();
+            document.getElementById('calc-formula').innerText = `${unit}円 × ${weight}g × ${100-margin}% = ¥${total.toLocaleString()}`;
+        }
+
+        function resetCalc() {
+            document.getElementById('calc-weight').value = '';
+            document.getElementById('calc-total').innerText = '¥ 0';
+            document.getElementById('calc-formula').innerText = '';
+            document.getElementById('calc-weight').focus();
+        }
+        
+        // Update Table Rows when Top Card changes
+        function manualInputChanged(type) {
+            let valStr = document.getElementById(`manual-${type}`).value;
+            const price = parseInt(valStr.replace(/,/g, '')) || 0;
+            
+            // Format input with commas
+            if (price > 0 && !valStr.endsWith('.')) {
+                 // only format if not typing decimal (though price is integer)
+            }
+
+            let targetId = '';
+            if (type === 'gold') targetId = 'k24_ig';
+            if (type === 'platinum') targetId = 'pt1000_ig';
+            if (type === 'silver') targetId = 'sv1000_ig';
+            if (type === 'palladium') targetId = 'pd_ig';
+
+            const rowInput = document.getElementById(`price-${targetId}`);
+            if (rowInput) {
+                rowInput.value = price > 0 ? price.toLocaleString() : '-';
+                // Trigger calc if this row is selected
+                if (currentSelection.id === targetId) {
+                    selectItem(targetId, currentSelection.name); // Refresh selection
+                }
+            }
+        }
+
+        // --- ENHANCED PARSING LOGIC ---
+        function parseImportText() {
+            const rawText = document.getElementById('import-text').value;
+            if (!rawText) {
+                showModal('alert-circle', 'テキストがありません', '公式サイトからコピーして貼り付けてください。', 'text-yellow-500');
+                return;
+            }
+
+            const text = rawText
+                .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+                .replace(/[Ａ-Ｚａ-ｚ]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
+                .replace(/[,，円￥]/g, '')
+                .toUpperCase();
+
+            const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
+            
+            let updatedCount = 0;
+            let successDetails = [];
+
+            Object.keys(METAL_ITEMS).forEach(type => {
+                METAL_ITEMS[type].forEach(item => {
+                    const price = findPriceRobust(lines, item.match, item.exclude, type);
+                    if (price > 0) {
+                        const input = document.getElementById(`price-${item.id}`);
+                        if (input) {
+                            input.value = price.toLocaleString();
+                            input.parentElement.classList.add('bg-green-100');
+                            setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
+                            updatedCount++;
+                            successDetails.push(`${item.label}: ¥${price.toLocaleString()}`);
+                            
+                            // Sync Top Cards
+                            if(item.id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
+                            if(item.id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
+                            if(item.id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
+                            if(item.id === 'pd_ig') document.getElementById('manual-palladium').value = price.toLocaleString();
+                        }
+                    }
+                });
+            });
+
+            if (updatedCount > 0) {
+                document.getElementById('import-text').value = '';
+                showModal('check-circle', '解析完了', 
+                    `<div class="text-left font-mono text-xs">${successDetails.slice(0,5).join('<br>')}...他</div><br>計 ${updatedCount} 件の価格を更新しました。`, 
+                    'text-green-600'
+                );
+            } else {
+                showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。<br>「K24 13500」のように品位と価格が含まれる範囲をコピーしてください。', 'text-red-500');
+            }
+        }
+
+        // Logic with Range Protection
+        function findPriceRobust(lines, matchKeywords, excludeKeywords, type) {
+            // Define safe price ranges to avoid parsing "1000" (purity) as price
+            const minPrice = type === 'silver' ? 10 : 2000;
+            const maxPrice = 200000;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (!matchKeywords.some(kw => line.includes(kw))) continue;
+                if (excludeKeywords.some(kw => line.includes(kw))) continue;
+
+                for (let j = 0; j <= 2; j++) {
+                    if (i + j >= lines.length) break;
+                    
+                    const targetLine = lines[i+j];
+                    const numbers = targetLine.match(/(\d{3,7})/g);
+                    
+                    if (numbers) {
+                        for (let numStr of numbers) {
+                            const val = parseInt(numStr);
+                            // Range Check prevents getting "1000" from "Pt1000" as price
+                            if (val > minPrice && val < maxPrice) { 
+                                return val;
+                            }
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+
+        function showModal(iconName, title, text, iconColor = 'text-indigo-600') {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modal-content');
+            
+            document.getElementById('modal-icon').innerHTML = `<i data-lucide="${iconName}" class="w-12 h-12 ${iconColor}"></i>`;
+            document.getElementById('modal-title').innerText = title;
+            document.getElementById('modal-text').innerHTML = text;
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('modal');
+            const content = document.getElementById('modal-content');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+    </script>
+</body>
+</html>
