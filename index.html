@@ -6,12 +6,14 @@
     <title>貴金属買取相場シミュレーター</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
         body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
         .animate-fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
+        /* Table Styles */
         .price-table th { @apply bg-gray-100 text-gray-600 font-bold py-2 px-3 text-left text-xs uppercase tracking-wider; }
         .price-table td { @apply py-2 px-3 border-b border-gray-100 text-sm transition-colors duration-200; }
         .price-table tr { @apply cursor-pointer; } 
@@ -19,7 +21,9 @@
         .price-table tr.selected td { @apply bg-indigo-600 text-white border-indigo-600; }
         .price-table tr.selected td input { @apply text-white; }
         .price-table tr.selected td .row-label { @apply text-white; }
+        .price-table tr.selected td .sub-label { @apply text-indigo-200; }
         
+        /* Input overrides */
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
@@ -61,9 +65,8 @@
                 <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
                     <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
                     <div>
-                        <strong>解析精度を向上させました:</strong><br>
-                        公式サイトの価格表全体をコピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付け（Ctrl+V）てください。<br>
-                        品位の数字（1000や925など）と価格を区別して読み取ります。
+                        <strong>使い方:</strong> 公式サイトを開き、価格表全体をコピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付け（Ctrl+V）てください。<br>
+                        コンビ（Pt900/K18等）を含む全品目の価格を自動解析して反映します。
                     </div>
                 </div>
 
@@ -79,8 +82,8 @@
             </div>
         </div>
 
-        <!-- Market Rates Display (Grid Layout for 4 metals) -->
-        <section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Market Rates Display -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Gold -->
             <div class="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden relative group p-4">
                 <div class="flex justify-between items-start mb-2">
@@ -91,6 +94,7 @@
                     <input type="text" id="manual-gold" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('gold')">
                     <span class="text-sm text-gray-500">円/g</span>
                 </div>
+                <p class="text-xs text-gray-400 mt-2">※相場価格 (税込)</p>
             </div>
 
             <!-- Platinum -->
@@ -103,6 +107,7 @@
                     <input type="text" id="manual-platinum" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('platinum')">
                     <span class="text-sm text-gray-500">円/g</span>
                 </div>
+                <p class="text-xs text-gray-400 mt-2">※相場価格 (税込)</p>
             </div>
 
             <!-- Palladium -->
@@ -115,6 +120,7 @@
                     <input type="text" id="manual-palladium" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('palladium')">
                     <span class="text-sm text-gray-500">円/g</span>
                 </div>
+                <p class="text-xs text-gray-400 mt-2">※相場価格 (税込)</p>
             </div>
 
             <!-- Silver -->
@@ -127,6 +133,7 @@
                     <input type="text" id="manual-silver" class="text-2xl font-bold w-full border-b border-transparent hover:border-gray-300 focus:border-indigo-500 outline-none bg-transparent transition-colors" value="0" oninput="manualInputChanged('silver')">
                     <span class="text-sm text-gray-500">円/g</span>
                 </div>
+                <p class="text-xs text-gray-400 mt-2">※相場価格 (税込)</p>
             </div>
         </section>
 
@@ -142,8 +149,16 @@
                         <h2 class="font-bold text-yellow-700 flex items-center gap-2">
                             <span class="w-2 h-2 bg-yellow-500 rounded-full"></span> 金 (GOLD)
                         </h2>
+                        <span class="text-xs text-gray-400">単位: 円/g (税込)</span>
                     </div>
                     <table class="w-full price-table">
+                        <thead>
+                            <tr>
+                                <th class="w-2/5">品位</th>
+                                <th class="w-2/5 text-right">買取価格</th>
+                                <th class="w-1/5 text-center">選択</th>
+                            </tr>
+                        </thead>
                         <tbody id="table-gold"></tbody>
                     </table>
                 </div>
@@ -154,9 +169,37 @@
                         <h2 class="font-bold text-slate-700 flex items-center gap-2">
                             <span class="w-2 h-2 bg-slate-500 rounded-full"></span> プラチナ (PLATINUM)
                         </h2>
+                        <span class="text-xs text-gray-400">単位: 円/g (税込)</span>
                     </div>
                     <table class="w-full price-table">
+                        <thead>
+                            <tr>
+                                <th class="w-2/5">品位</th>
+                                <th class="w-2/5 text-right">買取価格</th>
+                                <th class="w-1/5 text-center">選択</th>
+                            </tr>
+                        </thead>
                         <tbody id="table-platinum"></tbody>
+                    </table>
+                </div>
+
+                <!-- COMBINATION Table -->
+                <div class="bg-white rounded-xl shadow-sm border border-purple-200 overflow-hidden">
+                    <div class="bg-gradient-to-r from-purple-50 to-white px-4 py-2 border-b border-purple-100 flex justify-between items-center">
+                        <h2 class="font-bold text-purple-700 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-purple-500 rounded-full"></span> コンビ (COMBINATION)
+                        </h2>
+                        <span class="text-xs text-gray-400">単位: 円/g (税込)</span>
+                    </div>
+                    <table class="w-full price-table">
+                        <thead>
+                            <tr>
+                                <th class="w-2/5">品位 <span class="text-[10px] font-normal text-gray-500 ml-1">(割合目安)</span></th>
+                                <th class="w-2/5 text-right">買取価格</th>
+                                <th class="w-1/5 text-center">選択</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-combination"></tbody>
                     </table>
                 </div>
 
@@ -185,7 +228,8 @@
             </div>
 
             <!-- RIGHT: Calculator (Sticky) -->
-            <div class="lg:col-span-5 lg:sticky lg:top-24">
+            <div class="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
+                <!-- Calculator Card -->
                 <div class="bg-indigo-900 text-white rounded-2xl shadow-xl overflow-hidden ring-4 ring-indigo-50/50">
                     <div class="p-6">
                         <h2 class="text-lg font-bold flex items-center gap-2 mb-6 text-indigo-100">
@@ -217,9 +261,9 @@
                         <div class="mb-8">
                             <div class="flex justify-between items-center mb-2">
                                 <label class="text-xs font-bold text-indigo-200">手数料 (利益率)</label>
-                                <span id="margin-display" class="text-sm font-bold text-indigo-300">10%</span>
+                                <span id="margin-display" class="text-sm font-bold text-indigo-300">30%</span>
                             </div>
-                            <input type="range" id="calc-margin" min="0" max="50" value="10" class="w-full h-2 bg-indigo-800 rounded-lg appearance-none cursor-pointer accent-indigo-400">
+                            <input type="range" id="calc-margin" min="0" max="90" step="5" value="30" class="w-full h-2 bg-indigo-800 rounded-lg appearance-none cursor-pointer accent-indigo-400">
                         </div>
 
                         <!-- Result -->
@@ -230,16 +274,65 @@
                         </div>
                     </div>
                     
-                    <button onclick="resetCalc()" class="w-full bg-indigo-800 hover:bg-indigo-700 text-indigo-200 py-3 text-xs font-bold transition-colors flex justify-center gap-2 items-center">
-                        <i data-lucide="rotate-ccw" class="w-3 h-3"></i> リセット
-                    </button>
+                    <!-- Action Buttons -->
+                    <div class="flex border-t border-indigo-800">
+                        <button onclick="resetCalc()" class="flex-1 bg-indigo-900 hover:bg-indigo-800 text-indigo-300 py-3 text-xs font-bold transition-colors flex justify-center gap-2 items-center border-r border-indigo-800">
+                            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> リセット
+                        </button>
+                        <button onclick="addToList()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-3 text-sm font-bold transition-colors flex justify-center gap-2 items-center">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i> リストに追加
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Appraisal List -->
+                <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200" id="appraisal-list-container">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                        <h3 class="font-bold text-gray-700 flex items-center gap-2">
+                            <i data-lucide="list" class="w-4 h-4"></i> 査定明細
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openPdfModal()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-red-200">
+                                <i data-lucide="file-text" class="w-3 h-3"></i> PDF保存
+                            </button>
+                            <span id="list-count" class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full font-bold">0件</span>
+                        </div>
+                    </div>
+                    <div class="max-h-80 overflow-y-auto">
+                        <table class="w-full text-sm" id="appraisal-table">
+                            <thead class="bg-white sticky top-0 text-gray-500 text-xs shadow-sm">
+                                <tr>
+                                    <th class="px-2 py-2 text-center bg-gray-50 w-10">No.</th>
+                                    <th class="px-3 py-2 text-left bg-gray-50">品目</th>
+                                    <th class="px-2 py-2 text-right bg-gray-50">重量</th>
+                                    <th class="px-2 py-2 text-center bg-gray-50">手数料</th>
+                                    <th class="px-3 py-2 text-right bg-gray-50">金額</th>
+                                    <th class="px-3 py-2 text-right bg-gray-50 text-green-600">粗利</th>
+                                    <th class="w-8 bg-gray-50 text-center">削除</th>
+                                </tr>
+                            </thead>
+                            <tbody id="appraisal-list-body">
+                                <tr><td colspan="7" class="text-center py-8 text-gray-400 text-xs">リストは空です<br>計算後に「追加」ボタンを押してください</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-indigo-50 border-t border-indigo-100 p-4">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm font-bold text-indigo-900">買取合計</span>
+                            <span class="text-2xl font-black text-indigo-900 tracking-tight" id="grand-total">¥ 0</span>
+                        </div>
+                        <div class="flex justify-between items-center mt-2 pt-2 border-t border-indigo-200/50">
+                            <span class="text-xs font-bold text-gray-500">想定粗利合計 (差益)</span>
+                            <span class="text-lg font-bold text-green-600" id="total-profit">¥ 0</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
         </div>
     </main>
 
-    <!-- Modal -->
+    <!-- Modal (Messages) -->
     <div id="modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl scale-95 opacity-0 transition-all duration-200 transform" id="modal-content">
             <div id="modal-icon" class="mb-4 flex justify-center text-indigo-600"></div>
@@ -248,6 +341,27 @@
             <button onclick="closeModal()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200">閉じる</button>
         </div>
     </div>
+
+    <!-- Modal (PDF Filename) -->
+    <div id="pdf-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
+            <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+                <i data-lucide="file-text" class="text-red-500"></i>
+                PDF作成設定
+            </h3>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-500 mb-2">ファイル名</label>
+                <input type="text" id="pdf-filename" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-sm" placeholder="査定明細_yyyymmdd">
+                <p class="text-[10px] text-gray-400 mt-1 text-right">.pdf は自動で付きます</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closePdfModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-lg transition-colors text-sm">キャンセル</button>
+                <button onclick="showPdfPreview()" class="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2.5 rounded-lg transition-colors text-sm shadow-md">プレビュー作成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Preview Container (Generated dynamically) -->
 
     <script>
         // --- Configuration: Net Japan Items ---
@@ -260,7 +374,6 @@
                 { id: 'k20', label: 'K20', match: ['K20', '835'], exclude: [] },
                 { id: 'k18', label: 'K18', match: ['K18', '750'], exclude: [] },
                 { id: 'k14', label: 'K14', match: ['K14', '585'], exclude: [] },
-                { id: 'k12', label: 'K12', match: ['K12', '500'], exclude: [] },
                 { id: 'k10', label: 'K10', match: ['K10', '416'], exclude: [] },
                 { id: 'k9', label: 'K9', match: ['K9', '375'], exclude: [] },
             ],
@@ -270,6 +383,16 @@
                 { id: 'pt950', label: 'Pt950', match: ['PT950'], exclude: [] },
                 { id: 'pt900', label: 'Pt900', match: ['PT900'], exclude: [] },
                 { id: 'pt850', label: 'Pt850', match: ['PT850'], exclude: [] },
+            ],
+            combination: [
+                // Pt900 Base
+                { id: 'pt900_k18_1_9', label: 'Pt900/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT900/K18', '900/K18'], ratio: ['10:90', '1:9'], exclude: [] },
+                { id: 'pt900_k18_5_5', label: 'Pt900/K18 半々', sub: 'Pt50% : Au50%', match: ['PT900/K18', '900/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
+                { id: 'pt900_k18_9_1', label: 'Pt900/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT900/K18', '900/K18'], ratio: ['90:10', '9:1'], exclude: [] },
+                // Pt850 Base
+                { id: 'pt850_k18_1_9', label: 'Pt850/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT850/K18', '850/K18'], ratio: ['10:90', '1:9'], exclude: [] },
+                { id: 'pt850_k18_5_5', label: 'Pt850/K18 半々', sub: 'Pt50% : Au50%', match: ['PT850/K18', '850/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
+                { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
             ],
             palladium: [
                 { id: 'pd_ig', label: 'インゴット (Pd)', match: ['PD', 'INGOT', 'パラジウム'], exclude: [] },
@@ -282,6 +405,7 @@
         };
 
         let currentSelection = { id: null, price: 0, name: "未選択" };
+        let appraisalList = [];
 
         window.onload = () => {
             lucide.createIcons();
@@ -297,6 +421,7 @@
         function generateTables() {
             createTableRows('gold', 'table-gold');
             createTableRows('platinum', 'table-platinum');
+            createTableRows('combination', 'table-combination');
             createTableRows('silver', 'table-silver');
             createTableRows('palladium', 'table-palladium');
         }
@@ -308,8 +433,13 @@
                 tr.id = `row-${item.id}`;
                 tr.onclick = () => selectItem(item.id, item.label);
                 
+                const subLabel = item.sub ? `<div class="sub-label text-[10px] text-gray-400 font-normal">${item.sub}</div>` : '';
+
                 tr.innerHTML = `
-                    <td class="font-bold text-gray-700 row-label">${item.label}</td>
+                    <td class="font-bold text-gray-700 row-label">
+                        ${item.label}
+                        ${subLabel}
+                    </td>
                     <td>
                         <input type="text" id="price-${item.id}" 
                             class="w-full bg-transparent outline-none border-b border-transparent focus:border-indigo-500 font-mono text-right font-bold text-gray-800 pointer-events-none" 
@@ -379,17 +509,128 @@
             document.getElementById('calc-formula').innerText = '';
             document.getElementById('calc-weight').focus();
         }
+
+        function addToList() {
+            const weight = parseFloat(document.getElementById('calc-weight').value) || 0;
+            const margin = parseInt(document.getElementById('calc-margin').value) || 0;
+            
+            if (currentSelection.id === null || currentSelection.price === 0) {
+                showModal('alert-circle', 'エラー', '品位を選択し、価格が設定されていることを確認してください。', 'text-red-500');
+                return;
+            }
+            if (weight <= 0) {
+                showModal('alert-circle', 'エラー', '重量を入力してください。', 'text-red-500');
+                return;
+            }
+
+            const total = Math.floor(currentSelection.price * weight * (1 - margin / 100));
+
+            appraisalList.push({
+                name: currentSelection.name,
+                weight: weight,
+                unitPrice: currentSelection.price,
+                margin: margin,
+                price: total
+            });
+
+            updateListUI();
+            
+            document.getElementById('calc-weight').value = '';
+            document.getElementById('calc-total').innerText = '¥ 0';
+            document.getElementById('calc-formula').innerText = '';
+            document.getElementById('calc-weight').focus();
+            
+            const listArea = document.querySelector('.bg-indigo-900');
+            listArea.classList.add('ring-green-400');
+            setTimeout(() => listArea.classList.remove('ring-green-400'), 300);
+        }
+
+        function deleteItem(index) {
+            appraisalList.splice(index, 1);
+            updateListUI();
+        }
+
+        function updateItemMargin(index, newMarginStr) {
+            const newMargin = parseInt(newMarginStr);
+            if (isNaN(newMargin) || newMargin < 0 || newMargin > 100) return;
+
+            const item = appraisalList[index];
+            item.margin = newMargin;
+            item.price = Math.floor(item.unitPrice * item.weight * (1 - newMargin / 100));
+            
+            updateListUI();
+        }
+
+        function updateListUI() {
+            const tbody = document.getElementById('appraisal-list-body');
+            tbody.innerHTML = '';
+
+            let grandTotal = 0;
+            let grossTotal = 0;
+
+            if (appraisalList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400 text-xs">リストは空です<br>計算後に「追加」ボタンを押してください</td></tr>`;
+            } else {
+                appraisalList.forEach((item, index) => {
+                    grandTotal += item.price;
+                    const itemGross = Math.floor(item.unitPrice * item.weight);
+                    grossTotal += itemGross;
+                    
+                    const itemProfit = itemGross - item.price;
+                    
+                    let marginOptions = '';
+                    let found = false;
+                    
+                    for (let m = 10; m <= 90; m += 5) {
+                        const selected = item.margin === m ? 'selected' : '';
+                        if (selected) found = true;
+                        marginOptions += `<option value="${m}" ${selected}>${m}%</option>`;
+                    }
+                    if (!found) {
+                        marginOptions += `<option value="${item.margin}" selected>${item.margin}%</option>`;
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0";
+                    tr.innerHTML = `
+                        <td class="px-2 py-2 text-center text-gray-500 font-mono text-xs">${index + 1}</td>
+                        <td class="px-3 py-2 font-bold text-gray-700">${item.name}</td>
+                        <td class="px-2 py-2 text-right text-gray-600">${item.weight}g</td>
+                        <td class="px-2 py-2 text-center">
+                            <div class="flex items-center justify-center">
+                                <select 
+                                    class="border border-gray-300 rounded px-1 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer"
+                                    onchange="updateItemMargin(${index}, this.value)"
+                                >
+                                    ${marginOptions}
+                                </select>
+                            </div>
+                        </td>
+                        <td class="px-3 py-2 text-right font-mono font-bold text-indigo-900">¥ ${item.price.toLocaleString()}</td>
+                        <td class="px-3 py-2 text-right font-mono text-xs font-bold text-green-600">+¥ ${itemProfit.toLocaleString()}</td>
+                        <td class="px-2 py-2 text-center">
+                            <button onclick="deleteItem(${index})" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            const totalProfit = grossTotal - grandTotal;
+
+            document.getElementById('list-count').innerText = `${appraisalList.length}件`;
+            document.getElementById('grand-total').innerText = `¥ ${grandTotal.toLocaleString()}`;
+            document.getElementById('total-profit').innerText = `+ ¥ ${totalProfit.toLocaleString()}`;
+            
+            lucide.createIcons();
+        }
         
-        // Update Table Rows when Top Card changes
         function manualInputChanged(type) {
             let valStr = document.getElementById(`manual-${type}`).value;
             const price = parseInt(valStr.replace(/,/g, '')) || 0;
             
-            // Format input with commas
-            if (price > 0 && !valStr.endsWith('.')) {
-                 // only format if not typing decimal (though price is integer)
-            }
-
             let targetId = '';
             if (type === 'gold') targetId = 'k24_ig';
             if (type === 'platinum') targetId = 'pt1000_ig';
@@ -399,9 +640,8 @@
             const rowInput = document.getElementById(`price-${targetId}`);
             if (rowInput) {
                 rowInput.value = price > 0 ? price.toLocaleString() : '-';
-                // Trigger calc if this row is selected
                 if (currentSelection.id === targetId) {
-                    selectItem(targetId, currentSelection.name); // Refresh selection
+                    selectItem(targetId, currentSelection.name);
                 }
             }
         }
@@ -414,72 +654,114 @@
                 return;
             }
 
+            // Normalize
             const text = rawText
                 .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
                 .replace(/[Ａ-Ｚａ-ｚ]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
                 .replace(/[,，円￥]/g, '')
+                .replace(/[／]/g, '/') // Ensure slashes are normalized
+                .replace(/：/g, ':')   // Normalize colons for ratios
                 .toUpperCase();
 
+            // 1. Ticker / Single Line Parsing (Enhanced regex)
+            const tickerPatterns = [
+                { id: 'k24_ig', regex: /(?:金|GOLD|K24)(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{4,7})/ },
+                { id: 'pt1000_ig', regex: /(?:PT|PLATINUM|プラチナ)(?:1000)?(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{3,7})/ },
+                // Silver: Allow "銀 398" without "Ingot", and "Sv1000 398"
+                { id: 'sv1000_ig', regex: /(?:銀|SILVER|SV)(?:1000)?(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{3,7})/ }, 
+                { id: 'pd_ig', regex: /(?:PD|PALLADIUM|パラジウム)\s*[:：]?\s*(\d{3,7})/ }
+            ];
+
+            tickerPatterns.forEach(item => {
+                const match = text.match(item.regex);
+                if (match && match[1]) {
+                    const price = parseInt(match[1]);
+                    // Silver Guard: Avoid confusing purity (1000, 925) with price
+                    if (item.id.includes('sv') && (price === 1000 || price === 950 || price === 925)) {
+                        return; 
+                    }
+                    
+                    const min = item.id.includes('sv') ? 10 : 2000;
+                    if (price > min) {
+                        updateInput(item.id, price);
+                    }
+                }
+            });
+
+            // 2. Line-by-Line Parsing (Table format fallback)
             const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
             
-            let updatedCount = 0;
-            let successDetails = [];
-
             Object.keys(METAL_ITEMS).forEach(type => {
                 METAL_ITEMS[type].forEach(item => {
-                    const price = findPriceRobust(lines, item.match, item.exclude, type);
+                    // Pass ratio keywords if they exist
+                    const price = findPriceRobust(lines, item.match, item.exclude, type, item.ratio);
                     if (price > 0) {
-                        const input = document.getElementById(`price-${item.id}`);
-                        if (input) {
-                            input.value = price.toLocaleString();
-                            input.parentElement.classList.add('bg-green-100');
-                            setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
-                            updatedCount++;
-                            successDetails.push(`${item.label}: ¥${price.toLocaleString()}`);
-                            
-                            // Sync Top Cards
-                            if(item.id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
-                            if(item.id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
-                            if(item.id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
-                            if(item.id === 'pd_ig') document.getElementById('manual-palladium').value = price.toLocaleString();
-                        }
+                        updateInput(item.id, price);
                     }
                 });
             });
 
-            if (updatedCount > 0) {
+            // Special Fallback for Top Card (Silver)
+            // If Sv1000_ig (Ingot) is empty but Sv1000 (Scrap) is found, use Scrap price for top card
+            const igVal = document.getElementById('price-sv1000_ig').value;
+            const scrapVal = document.getElementById('price-sv1000').value;
+            if ((!igVal || igVal === '-') && scrapVal && scrapVal !== '-') {
+                document.getElementById('manual-silver').value = scrapVal;
+            }
+
+            let filledCount = 0;
+            document.querySelectorAll('input[id^="price-"]').forEach(input => {
+                if(input.value && input.value !== '-') filledCount++;
+            });
+
+            if (filledCount > 0) {
                 document.getElementById('import-text').value = '';
                 showModal('check-circle', '解析完了', 
-                    `<div class="text-left font-mono text-xs">${successDetails.slice(0,5).join('<br>')}...他</div><br>計 ${updatedCount} 件の価格を更新しました。`, 
+                    `価格情報を抽出・更新しました。<br>現在 ${filledCount} 項目が入力されています。`, 
                     'text-green-600'
                 );
             } else {
-                showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。<br>「K24 13500」のように品位と価格が含まれる範囲をコピーしてください。', 'text-red-500');
+                showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。<br>貼り付けたテキストに「銀 398」や「K24 13000」のような数値が含まれているか確認してください。', 'text-red-500');
             }
         }
 
-        // Logic with Range Protection
-        function findPriceRobust(lines, matchKeywords, excludeKeywords, type) {
-            // Define safe price ranges to avoid parsing "1000" (purity) as price
+        // Updated Finder with Ratio Support
+        function findPriceRobust(lines, matchKeywords, excludeKeywords, type, ratioKeywords = []) {
             const minPrice = type === 'silver' ? 10 : 2000;
             const maxPrice = 200000;
 
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
+                // 1. Check Metal Keyword (OR)
                 if (!matchKeywords.some(kw => line.includes(kw))) continue;
+                
+                // 2. Check Exclude Keyword (OR)
                 if (excludeKeywords.some(kw => line.includes(kw))) continue;
 
+                // 3. Check Ratio Keyword (OR) - New Logic
+                if (ratioKeywords.length > 0) {
+                    if (!ratioKeywords.some(kw => line.includes(kw))) continue;
+                }
+
+                // Look for price in current and next 2 lines
                 for (let j = 0; j <= 2; j++) {
                     if (i + j >= lines.length) break;
                     
                     const targetLine = lines[i+j];
-                    const numbers = targetLine.match(/(\d{3,7})/g);
+                    // Allow 2-7 digits for silver prices like 398
+                    const numbers = targetLine.match(/(\d{2,7})/g); 
                     
                     if (numbers) {
                         for (let numStr of numbers) {
                             const val = parseInt(numStr);
-                            // Range Check prevents getting "1000" from "Pt1000" as price
+                            
+                            // Guards
+                            if (type === 'silver' && (val === 1000 || val === 950 || val === 925 || val === 900)) continue;
+                            
+                            // Ratio Guard: Don't pick up the ratio numbers themselves as price (e.g. 90, 10, 50)
+                            if (val === 90 || val === 10 || val === 50) continue; 
+
                             if (val > minPrice && val < maxPrice) { 
                                 return val;
                             }
@@ -488,6 +770,212 @@
                 }
             }
             return 0;
+        }
+
+        function updateInput(id, price) {
+            const input = document.getElementById(`price-${id}`);
+            if (input) {
+                const currentVal = parseInt(input.value.replace(/,/g, '')) || 0;
+                if (currentVal !== price) {
+                    input.value = price.toLocaleString();
+                    input.parentElement.classList.add('bg-green-100');
+                    setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
+                    
+                    // Sync Top Cards
+                    if(id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
+                    if(id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
+                    if(id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
+                    if(id === 'pd_ig') document.getElementById('manual-palladium').value = price.toLocaleString();
+                }
+            }
+        }
+
+        // --- PDF Functions (Revamped) ---
+        
+        function openPdfModal() {
+            if (appraisalList.length === 0) {
+                showModal('alert-circle', 'エラー', '保存する明細がありません。', 'text-red-500');
+                return;
+            }
+            const today = new Date();
+            const dateStr = today.getFullYear() +
+                            ('0' + (today.getMonth() + 1)).slice(-2) +
+                            ('0' + today.getDate()).slice(-2);
+            document.getElementById('pdf-filename').value = `査定明細_${dateStr}`;
+            document.getElementById('pdf-modal').classList.remove('hidden');
+        }
+
+        function closePdfModal() {
+            document.getElementById('pdf-modal').classList.add('hidden');
+        }
+
+        // 1. Show Preview Overlay
+        function showPdfPreview() {
+            const filename = document.getElementById('pdf-filename').value || '査定明細';
+            closePdfModal();
+
+            // Create Preview Container
+            const previewContainer = document.createElement('div');
+            previewContainer.id = 'pdf-preview-overlay';
+            previewContainer.style.position = 'fixed';
+            previewContainer.style.top = '0';
+            previewContainer.style.left = '0';
+            previewContainer.style.width = '100%';
+            previewContainer.style.height = '100%';
+            previewContainer.style.zIndex = '9999';
+            previewContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+            previewContainer.style.backdropFilter = 'blur(5px)';
+            previewContainer.style.display = 'flex';
+            previewContainer.style.flexDirection = 'column';
+            previewContainer.style.alignItems = 'center';
+            previewContainer.style.padding = '20px';
+            previewContainer.style.boxSizing = 'border-box';
+            previewContainer.style.overflowY = 'auto';
+
+            // Toolbar
+            const toolbar = document.createElement('div');
+            toolbar.className = 'flex gap-4 mb-4 bg-white p-3 rounded-xl shadow-lg sticky top-0 z-50';
+            toolbar.innerHTML = `
+                <button onclick="downloadPdf('${filename}')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-md">
+                    <i data-lucide="download" class="w-4 h-4"></i> PDFダウンロード
+                </button>
+                <button onclick="closePreview()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">
+                    <i data-lucide="x" class="w-4 h-4"></i> 閉じる
+                </button>
+            `;
+
+            // A4 Paper Content
+            const paper = document.createElement('div');
+            paper.id = 'pdf-content-target';
+            paper.style.width = '210mm';
+            paper.style.minHeight = '297mm';
+            paper.style.backgroundColor = '#fff';
+            paper.style.padding = '40px';
+            paper.style.boxSizing = 'border-box';
+            paper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+            paper.style.fontFamily = '"Inter", "Noto Sans JP", sans-serif';
+            paper.style.color = '#000';
+            
+            // Build Content
+            let tableRows = '';
+            let grandTotal = 0;
+            let grossTotal = 0;
+            
+            appraisalList.forEach((item, index) => {
+                grandTotal += item.price;
+                const itemGross = Math.floor(item.unitPrice * item.weight);
+                const itemProfit = itemGross - item.price;
+                grossTotal += itemGross;
+                
+                tableRows += `
+                    <tr style="border-bottom: 1px solid #ddd;">
+                        <td style="padding: 10px; text-align: center;">${index + 1}</td>
+                        <td style="padding: 10px;">${item.name}</td>
+                        <td style="padding: 10px; text-align: right;">${item.weight} g</td>
+                        <td style="padding: 10px; text-align: right;">¥ ${item.unitPrice.toLocaleString()}</td>
+                        <td style="padding: 10px; text-align: center;">${item.margin}%</td>
+                        <td style="padding: 10px; text-align: right;">¥ ${item.price.toLocaleString()}</td>
+                        <td style="padding: 10px; text-align: right; color: #16a34a;">+¥ ${itemProfit.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+            
+            const totalProfit = grossTotal - grandTotal;
+
+            paper.innerHTML = `
+                <div style="text-align: center; margin-bottom: 40px;">
+                    <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 10px; color: #111;">御見積書 (査定明細)</h1>
+                    <div style="width: 100px; height: 3px; background-color: #333; margin: 0 auto;"></div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
+                    <div></div>
+                    <div style="text-align: right; font-size: 14px; color: #333;">
+                        <p>発行日: ${new Date().toLocaleDateString('ja-JP')}</p>
+                    </div>
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 30px;">
+                    <thead>
+                        <tr style="background-color: #f3f4f6; border-top: 2px solid #333; border-bottom: 2px solid #333;">
+                            <th style="padding: 12px; text-align: center; width: 50px;">No.</th>
+                            <th style="padding: 12px; text-align: left;">品目</th>
+                            <th style="padding: 12px; text-align: right;">重量</th>
+                            <th style="padding: 12px; text-align: right;">単価</th>
+                            <th style="padding: 12px; text-align: center;">手数料</th>
+                            <th style="padding: 12px; text-align: right;">査定金額</th>
+                            <th style="padding: 12px; text-align: right;">粗利</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                    <tfoot>
+                        <tr style="border-top: 2px solid #333;">
+                            <td colspan="5" style="padding: 20px 10px; text-align: right; font-weight: bold; font-size: 18px;">買取合計金額</td>
+                            <td colspan="2" style="padding: 20px 10px; text-align: right; font-weight: bold; font-size: 24px; color: #111;">¥ ${grandTotal.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td colspan="5" style="padding: 5px 10px; text-align: right; color: #666; font-size: 12px;">想定粗利合計</td>
+                            <td colspan="2" style="padding: 5px 10px; text-align: right; color: #16a34a; font-weight: bold; font-size: 14px;">+¥ ${totalProfit.toLocaleString()}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+                
+                <div style="text-align: center; margin-top: 50px; color: #999; font-size: 12px;">
+                    本見積書はシステムによる概算計算結果です。
+                </div>
+            `;
+
+            previewContainer.appendChild(toolbar);
+            previewContainer.appendChild(paper);
+            document.body.appendChild(previewContainer);
+            
+            // Re-render icons inside new DOM
+            lucide.createIcons();
+        }
+
+        // 2. Execute Download
+        function downloadPdf(filename) {
+            const element = document.getElementById('pdf-content-target');
+            const btn = document.querySelector('#pdf-preview-overlay button'); // Download button
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 生成中...`;
+            lucide.createIcons();
+            btn.disabled = true;
+
+            const opt = {
+                margin:       10,
+                filename:     `${filename}.pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save().then(() => {
+                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> 完了`;
+                lucide.createIcons();
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    lucide.createIcons();
+                }, 2000);
+            }).catch(err => {
+                console.error(err);
+                alert("PDF生成に失敗しました");
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                lucide.createIcons();
+            });
+        }
+
+        // 3. Close Preview
+        function closePreview() {
+            const overlay = document.getElementById('pdf-preview-overlay');
+            if (overlay) {
+                document.body.removeChild(overlay);
+            }
         }
 
         function showModal(iconName, title, text, iconColor = 'text-indigo-600') {
