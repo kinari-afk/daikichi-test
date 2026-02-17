@@ -445,6 +445,8 @@
         </div>
     </div>
 
+    <!-- PDF Preview Container (Generated dynamically) -->
+
     <script>
         // --- Configuration: Net Japan Items ---
         const METAL_ITEMS = {
@@ -495,6 +497,9 @@
             lucide.createIcons();
             generateTables();
             updateMemoryStatus();
+            
+            // Explicitly attach printPreview to window to avoid scope issues
+            window.printPreview = printPreview;
             
             const hist = localStorage.getItem('appraisalHistoryData');
             if (hist) appraisalHistory = JSON.parse(hist);
@@ -778,6 +783,7 @@
             
             Object.keys(METAL_ITEMS).forEach(type => {
                 METAL_ITEMS[type].forEach(item => {
+                    // Pass ratio keywords if they exist
                     const price = findPriceRobust(lines, item.match, item.exclude, type, item.ratio);
                     if (price > 0) {
                         updateInput(item.id, price);
@@ -819,7 +825,7 @@
                 if (!matchKeywords.some(kw => line.includes(kw))) continue;
                 if (excludeKeywords.some(kw => line.includes(kw))) continue;
 
-                if (ratioKeywords.length > 0) {
+                if (ratioKeywords && ratioKeywords.length > 0) {
                     if (!ratioKeywords.some(kw => line.includes(kw))) continue;
                 }
 
@@ -858,6 +864,7 @@
                     input.parentElement.classList.add('bg-green-100');
                     setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
                     
+                    // Sync Top Cards
                     if(id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
                     if(id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
                     if(id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
@@ -1099,6 +1106,9 @@
                 <button onclick="downloadPdf('${filename}')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-md">
                     <i data-lucide="download" class="w-4 h-4"></i> PDFダウンロード
                 </button>
+                <button onclick="window.printPreview()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-md">
+                    <i data-lucide="printer" class="w-4 h-4"></i> 印刷
+                </button>
                 <button onclick="closePreview()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">
                     <i data-lucide="x" class="w-4 h-4"></i> 閉じる
                 </button>
@@ -1160,7 +1170,7 @@
                             <th style="padding: 12px; text-align: left;">品目</th>
                             <th style="padding: 12px; text-align: right;">重量</th>
                             <th style="padding: 12px; text-align: right;">単価</th>
-                            <th style="padding: 12px; text-align: center;">粗利率</th>
+                            <th style="padding: 12px; text-align: center;">手数料</th>
                             <th style="padding: 12px; text-align: right;">査定金額</th>
                             <th style="padding: 12px; text-align: right;">粗利</th>
                         </tr>
@@ -1250,6 +1260,60 @@
                 });
             }, 100);
         }
+
+        // Print Function attached to window
+        function printPreview() {
+            const content = document.getElementById('pdf-content-target').innerHTML;
+            
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            document.body.appendChild(iframe);
+            
+            const doc = iframe.contentWindow.document;
+            doc.open();
+            doc.write(`
+                <html>
+                <head>
+                    <title>査定明細印刷</title>
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+                        body { 
+                            font-family: 'Inter', 'Noto Sans JP', sans-serif; 
+                            margin: 0; 
+                            padding: 20px;
+                            color: #000;
+                        }
+                        table { width: 100%; border-collapse: collapse; }
+                        th, td { padding: 8px; border-bottom: 1px solid #ddd; }
+                        th { border-top: 2px solid #333; border-bottom: 2px solid #333; }
+                        tfoot tr { border-top: 2px solid #333; }
+                        @media print {
+                            body { -webkit-print-color-adjust: exact; }
+                            @page { size: A4; margin: 10mm; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+                </html>
+            `);
+            doc.close();
+            
+            iframe.onload = function() {
+                setTimeout(() => {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                    setTimeout(() => document.body.removeChild(iframe), 1000);
+                }, 500);
+            };
+        }
+        window.printPreview = printPreview;
 
         function closePreview() {
             const overlay = document.getElementById('pdf-preview-overlay');
