@@ -40,9 +40,14 @@
                 </h1>
                 <p class="text-[10px] text-gray-400">Net Japan Partner Reference System</p>
             </div>
-            <div id="status-badge" class="bg-indigo-600 px-3 py-1 rounded-full text-xs text-white font-bold shadow-sm flex items-center gap-1">
-                <i data-lucide="check-circle" class="w-3 h-3"></i>
-                <span id="status-text">稼働中</span>
+            <div class="flex items-center gap-3">
+                 <button onclick="openHistoryModal()" class="bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1 border border-slate-600">
+                    <i data-lucide="history" class="w-3 h-3"></i> 査定履歴
+                </button>
+                <div id="status-badge" class="bg-indigo-600 px-3 py-1 rounded-full text-xs text-white font-bold shadow-sm flex items-center gap-1">
+                    <i data-lucide="check-circle" class="w-3 h-3"></i>
+                    <span id="status-text">稼働中</span>
+                </div>
             </div>
         </div>
     </header>
@@ -79,10 +84,19 @@
                         <i data-lucide="wand-2" class="w-4 h-4"></i> 解析・反映
                     </button>
                 </div>
+                
+                <!-- Memory Functions -->
+                <div class="flex items-center justify-between bg-gray-50 p-2 rounded-lg border border-gray-200 text-xs text-gray-500">
+                     <span id="memory-timestamp"><i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> 相場メモリ: 未保存</span>
+                     <div class="flex gap-2">
+                        <button onclick="saveMarketData()" class="hover:text-blue-600 underline">相場を保存</button>
+                        <button onclick="loadMarketData()" id="btn-load-memory" class="hover:text-green-600 underline disabled:opacity-50" disabled>相場を復元</button>
+                     </div>
+                </div>
             </div>
         </div>
 
-        <!-- Market Rates Display -->
+        <!-- Market Rates Display (Grid Layout for 4 metals) -->
         <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <!-- Gold -->
             <div class="bg-white rounded-xl shadow-sm border border-yellow-200 overflow-hidden relative group p-4">
@@ -260,7 +274,7 @@
                         <!-- Margin Slider -->
                         <div class="mb-8">
                             <div class="flex justify-between items-center mb-2">
-                                <label class="text-xs font-bold text-indigo-200">手数料 (利益率)</label>
+                                <label class="text-xs font-bold text-indigo-200">粗利率</label>
                                 <span id="margin-display" class="text-sm font-bold text-indigo-300">30%</span>
                             </div>
                             <input type="range" id="calc-margin" min="0" max="90" step="5" value="30" class="w-full h-2 bg-indigo-800 rounded-lg appearance-none cursor-pointer accent-indigo-400">
@@ -270,7 +284,7 @@
                         <div class="border-t border-indigo-700 pt-6 text-center">
                             <label class="block text-xs text-indigo-300 mb-2 uppercase tracking-widest">お支払金額</label>
                             <div id="calc-total" class="text-5xl font-black tracking-tight text-white mb-2">¥ 0</div>
-                            <p class="text-[10px] text-indigo-400" id="calc-formula">単価 × 重量 × (1 - 手数料)</p>
+                            <p class="text-[10px] text-indigo-400" id="calc-formula">単価 × 重量 × (1 - 粗利率)</p>
                         </div>
                     </div>
                     
@@ -292,8 +306,11 @@
                             <i data-lucide="list" class="w-4 h-4"></i> 査定明細
                         </h3>
                         <div class="flex items-center gap-2">
-                            <button onclick="openPdfModal()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-red-200">
-                                <i data-lucide="file-text" class="w-3 h-3"></i> PDF保存
+                             <button onclick="openSaveHistoryModal()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-blue-200" title="履歴に保存">
+                                <i data-lucide="save" class="w-3 h-3"></i> 履歴保存
+                            </button>
+                            <button onclick="openPdfModal()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-red-200" title="PDF発行">
+                                <i data-lucide="file-text" class="w-3 h-3"></i> PDF
                             </button>
                             <span id="list-count" class="bg-gray-200 text-gray-600 text-xs px-2 py-1 rounded-full font-bold">0件</span>
                         </div>
@@ -305,7 +322,7 @@
                                     <th class="px-2 py-2 text-center bg-gray-50 w-10">No.</th>
                                     <th class="px-3 py-2 text-left bg-gray-50">品目</th>
                                     <th class="px-2 py-2 text-right bg-gray-50">重量</th>
-                                    <th class="px-2 py-2 text-center bg-gray-50">手数料</th>
+                                    <th class="px-2 py-2 text-center bg-gray-50">粗利率</th>
                                     <th class="px-3 py-2 text-right bg-gray-50">金額</th>
                                     <th class="px-3 py-2 text-right bg-gray-50 text-green-600">粗利</th>
                                     <th class="w-8 bg-gray-50 text-center">削除</th>
@@ -342,8 +359,23 @@
         </div>
     </div>
 
-    <!-- Modal (PDF Filename) -->
-    <div id="pdf-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <!-- Modal (Confirmation) - z-index increased -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl scale-95 opacity-0 transition-all duration-200 transform" id="confirm-modal-content">
+            <div class="mb-4 flex justify-center text-red-600">
+                <i data-lucide="alert-triangle" class="w-12 h-12"></i>
+            </div>
+            <h3 class="text-lg font-bold mb-2 text-gray-800">削除の確認</h3>
+            <p class="text-sm text-gray-600 mb-6">この査定履歴を削除してもよろしいですか？<br>この操作は取り消せません。</p>
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl transition-colors">キャンセル</button>
+                <button id="confirm-delete-btn" class="flex-1 bg-red-600 text-white hover:bg-red-700 font-bold py-3 rounded-xl transition-colors shadow-lg shadow-red-200">削除する</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal (PDF Filename) - z-index increased -->
+    <div id="pdf-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
             <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
                 <i data-lucide="file-text" class="text-red-500"></i>
@@ -361,7 +393,57 @@
         </div>
     </div>
 
-    <!-- PDF Preview Container (Generated dynamically) -->
+    <!-- Modal (Save History) - z-index increased -->
+    <div id="save-history-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
+            <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
+                <i data-lucide="save" class="text-blue-500"></i>
+                履歴に保存
+            </h3>
+            <div class="mb-4">
+                <label class="block text-xs font-bold text-gray-500 mb-2">履歴のタイトル（任意）</label>
+                <input type="text" id="history-title" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="例: お客様A様、2024/01/01分など">
+                <p class="text-[10px] text-gray-400 mt-1 text-right">空欄の場合は日時がタイトルになります</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeSaveHistoryModal()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-lg transition-colors text-sm">キャンセル</button>
+                <button onclick="executeSaveHistory()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-lg transition-colors text-sm shadow-md">保存する</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal (History List) - z-index kept at 50 -->
+    <div id="history-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl animate-fade-in max-h-[85vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <i data-lucide="history" class="text-slate-600"></i>
+                    査定履歴
+                </h3>
+                <button onclick="closeHistoryModal()" class="text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto border border-gray-200 rounded-xl mb-4 bg-gray-50">
+                <table class="w-full text-sm">
+                    <thead class="bg-white sticky top-0 border-b border-gray-200 text-gray-500 text-xs">
+                        <tr>
+                            <th class="px-4 py-3 text-left">日時 / タイトル</th>
+                            <th class="px-4 py-3 text-center">点数</th>
+                            <th class="px-4 py-3 text-right">買取合計額</th>
+                            <th class="px-4 py-3 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-list-body">
+                        <!-- Loaded dynamically -->
+                    </tbody>
+                </table>
+            </div>
+            
+             <button onclick="closeHistoryModal()" class="w-full bg-slate-600 text-white font-bold py-3 rounded-xl hover:bg-slate-700 transition-colors shadow-md">閉じる</button>
+        </div>
+    </div>
 
     <script>
         // --- Configuration: Net Japan Items ---
@@ -406,11 +488,17 @@
 
         let currentSelection = { id: null, price: 0, name: "未選択" };
         let appraisalList = [];
+        let appraisalHistory = [];
+        let deleteTargetId = null;
 
         window.onload = () => {
             lucide.createIcons();
             generateTables();
+            updateMemoryStatus();
             
+            const hist = localStorage.getItem('appraisalHistoryData');
+            if (hist) appraisalHistory = JSON.parse(hist);
+
             document.getElementById('calc-weight').addEventListener('input', calculate);
             document.getElementById('calc-margin').addEventListener('input', (e) => {
                 document.getElementById('margin-display').innerText = `${e.target.value}%`;
@@ -500,7 +588,7 @@
             const total = Math.floor(currentSelection.price * weight * (1 - margin / 100));
             document.getElementById('calc-total').innerText = `¥ ${total.toLocaleString()}`;
             const unit = currentSelection.price.toLocaleString();
-            document.getElementById('calc-formula').innerText = `${unit}円 × ${weight}g × ${100-margin}% = ¥${total.toLocaleString()}`;
+            document.getElementById('calc-formula').innerText = `${unit}円 × ${weight}g × (100% - ${margin}%) = ¥${total.toLocaleString()}`;
         }
 
         function resetCalc() {
@@ -575,7 +663,6 @@
                     grandTotal += item.price;
                     const itemGross = Math.floor(item.unitPrice * item.weight);
                     grossTotal += itemGross;
-                    
                     const itemProfit = itemGross - item.price;
                     
                     let marginOptions = '';
@@ -659,8 +746,8 @@
                 .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
                 .replace(/[Ａ-Ｚａ-ｚ]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
                 .replace(/[,，円￥]/g, '')
-                .replace(/[／]/g, '/') // Ensure slashes are normalized
-                .replace(/：/g, ':')   // Normalize colons for ratios
+                .replace(/[／]/g, '/') 
+                .replace(/：/g, ':') 
                 .toUpperCase();
 
             // 1. Ticker / Single Line Parsing (Enhanced regex)
@@ -676,11 +763,9 @@
                 const match = text.match(item.regex);
                 if (match && match[1]) {
                     const price = parseInt(match[1]);
-                    // Silver Guard: Avoid confusing purity (1000, 925) with price
                     if (item.id.includes('sv') && (price === 1000 || price === 950 || price === 925)) {
                         return; 
                     }
-                    
                     const min = item.id.includes('sv') ? 10 : 2000;
                     if (price > min) {
                         updateInput(item.id, price);
@@ -688,12 +773,11 @@
                 }
             });
 
-            // 2. Line-by-Line Parsing (Table format fallback)
+            // 2. Line-by-Line Parsing
             const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
             
             Object.keys(METAL_ITEMS).forEach(type => {
                 METAL_ITEMS[type].forEach(item => {
-                    // Pass ratio keywords if they exist
                     const price = findPriceRobust(lines, item.match, item.exclude, type, item.ratio);
                     if (price > 0) {
                         updateInput(item.id, price);
@@ -702,7 +786,6 @@
             });
 
             // Special Fallback for Top Card (Silver)
-            // If Sv1000_ig (Ingot) is empty but Sv1000 (Scrap) is found, use Scrap price for top card
             const igVal = document.getElementById('price-sv1000_ig').value;
             const scrapVal = document.getElementById('price-sv1000').value;
             if ((!igVal || igVal === '-') && scrapVal && scrapVal !== '-') {
@@ -733,23 +816,17 @@
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
 
-                // 1. Check Metal Keyword (OR)
                 if (!matchKeywords.some(kw => line.includes(kw))) continue;
-                
-                // 2. Check Exclude Keyword (OR)
                 if (excludeKeywords.some(kw => line.includes(kw))) continue;
 
-                // 3. Check Ratio Keyword (OR) - New Logic
                 if (ratioKeywords.length > 0) {
                     if (!ratioKeywords.some(kw => line.includes(kw))) continue;
                 }
 
-                // Look for price in current and next 2 lines
                 for (let j = 0; j <= 2; j++) {
                     if (i + j >= lines.length) break;
                     
                     const targetLine = lines[i+j];
-                    // Allow 2-7 digits for silver prices like 398
                     const numbers = targetLine.match(/(\d{2,7})/g); 
                     
                     if (numbers) {
@@ -759,7 +836,7 @@
                             // Guards
                             if (type === 'silver' && (val === 1000 || val === 950 || val === 925 || val === 900)) continue;
                             
-                            // Ratio Guard: Don't pick up the ratio numbers themselves as price (e.g. 90, 10, 50)
+                            // Ratio Guard
                             if (val === 90 || val === 10 || val === 50) continue; 
 
                             if (val > minPrice && val < maxPrice) { 
@@ -781,7 +858,6 @@
                     input.parentElement.classList.add('bg-green-100');
                     setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
                     
-                    // Sync Top Cards
                     if(id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
                     if(id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
                     if(id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
@@ -790,7 +866,187 @@
             }
         }
 
-        // --- PDF Functions (Revamped) ---
+        // --- Memory Functions (LocalStorage) ---
+        function saveMarketData() {
+            const data = {};
+            document.querySelectorAll('input[id^="price-"]').forEach(input => {
+                data[input.id] = input.value;
+            });
+            data['manual-gold'] = document.getElementById('manual-gold').value;
+            data['manual-platinum'] = document.getElementById('manual-platinum').value;
+            data['manual-silver'] = document.getElementById('manual-silver').value;
+            data['manual-palladium'] = document.getElementById('manual-palladium').value;
+
+            const timestamp = new Date().toLocaleString('ja-JP');
+            localStorage.setItem('marketData', JSON.stringify(data));
+            localStorage.setItem('marketDataTime', timestamp);
+            
+            updateMemoryStatus();
+            showModal('check-circle', '保存完了', '現在の相場価格をブラウザに記憶しました。', 'text-blue-600');
+        }
+
+        function loadMarketData() {
+            const json = localStorage.getItem('marketData');
+            if (!json) return;
+            
+            const data = JSON.parse(json);
+            Object.keys(data).forEach(id => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = data[id];
+                    input.parentElement.classList.add('bg-blue-50');
+                    setTimeout(() => input.parentElement.classList.remove('bg-blue-50'), 1000);
+                }
+            });
+            if (currentSelection.id) selectItem(currentSelection.id, currentSelection.name);
+            showModal('check-circle', '復元完了', '記憶していた相場価格を呼び出しました。', 'text-green-600');
+        }
+
+        function updateMemoryStatus() {
+            const time = localStorage.getItem('marketDataTime');
+            const btn = document.getElementById('btn-load-memory');
+            const display = document.getElementById('memory-timestamp');
+            
+            if (time) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                display.innerHTML = `<i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> 相場メモリ: ${time}`;
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                display.innerText = '相場メモリ: 未保存';
+            }
+            lucide.createIcons();
+        }
+
+        // --- History Functions ---
+        function openSaveHistoryModal() {
+            if (appraisalList.length === 0) {
+                showModal('alert-circle', 'エラー', '保存する明細がありません。', 'text-red-500');
+                return;
+            }
+            
+            const now = new Date();
+            const defaultTitle = `査定履歴_${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}_${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}`;
+            document.getElementById('history-title').value = defaultTitle;
+            
+            document.getElementById('save-history-modal').classList.remove('hidden');
+        }
+
+        function closeSaveHistoryModal() {
+            document.getElementById('save-history-modal').classList.add('hidden');
+        }
+
+        function executeSaveHistory() {
+            const titleInput = document.getElementById('history-title');
+            const title = titleInput.value.trim() || titleInput.placeholder; 
+
+            const currentItemsJson = JSON.stringify(appraisalList);
+            const isDuplicate = appraisalHistory.some(hist => {
+                return JSON.stringify(hist.items) === currentItemsJson;
+            });
+
+            if (isDuplicate) {
+                closeSaveHistoryModal();
+                showModal('alert-triangle', '保存エラー', '全く同じ内容の査定履歴が既に存在します。<br>重複保存はできません。', 'text-red-500');
+                return;
+            }
+
+            const id = Date.now();
+            const date = new Date().toLocaleString('ja-JP');
+            const grandTotal = document.getElementById('grand-total').innerText;
+            const items = JSON.parse(JSON.stringify(appraisalList));
+
+            appraisalHistory.unshift({ id, date, title, grandTotal, items });
+            localStorage.setItem('appraisalHistoryData', JSON.stringify(appraisalHistory));
+            
+            closeSaveHistoryModal();
+            showModal('check-circle', '履歴保存完了', '現在の査定内容を履歴に保存しました。', 'text-blue-600');
+        }
+
+        function openHistoryModal() {
+            const tbody = document.getElementById('history-list-body');
+            tbody.innerHTML = '';
+
+            if (appraisalHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">保存された履歴はありません</td></tr>`;
+            } else {
+                appraisalHistory.forEach((hist) => {
+                    const tr = document.createElement('tr');
+                    tr.className = "border-b border-gray-100 hover:bg-gray-50";
+                    
+                    const displayTitle = hist.title ? `<span class="font-bold block text-gray-800">${hist.title}</span><span class="text-xs text-gray-400">${hist.date}</span>` : hist.date;
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 text-gray-700">${displayTitle}</td>
+                        <td class="px-4 py-3 text-center text-gray-600">${hist.items.length}点</td>
+                        <td class="px-4 py-3 text-right font-bold text-indigo-900">${hist.grandTotal}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="previewHistory(${hist.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors mr-2">
+                                PDF発行
+                            </button>
+                            <button onclick="confirmDeleteHistory(${hist.id})" class="text-gray-400 hover:text-red-500 p-1">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            document.getElementById('history-modal').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeHistoryModal() {
+            document.getElementById('history-modal').classList.add('hidden');
+        }
+
+        function confirmDeleteHistory(id) {
+            deleteTargetId = id;
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            const btn = document.getElementById('confirm-delete-btn');
+            
+            btn.onclick = function() {
+                executeDeleteHistory();
+            };
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+            }, 10);
+            lucide.createIcons();
+        }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirm-modal');
+            const content = document.getElementById('confirm-modal-content');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+            deleteTargetId = null;
+        }
+
+        function executeDeleteHistory() {
+            if (deleteTargetId === null) return;
+            
+            appraisalHistory = appraisalHistory.filter(h => h.id !== deleteTargetId);
+            localStorage.setItem('appraisalHistoryData', JSON.stringify(appraisalHistory));
+            
+            closeConfirmModal();
+            openHistoryModal(); 
+        }
+
+        function previewHistory(id) {
+            const hist = appraisalHistory.find(h => h.id === id);
+            if (!hist) return;
+            
+            closeHistoryModal();
+            const filename = hist.title ? hist.title : `履歴_${hist.date.split(' ')[0].replace(/\//g, '')}`;
+            showPdfPreview(hist.items, filename);
+        }
+
+        // --- PDF Functions ---
         
         function openPdfModal() {
             if (appraisalList.length === 0) {
@@ -809,12 +1065,17 @@
             document.getElementById('pdf-modal').classList.add('hidden');
         }
 
-        // 1. Show Preview Overlay
-        function showPdfPreview() {
+        function showPdfPreview(targetList = null, defaultFilename = null) {
+            const listToPrint = targetList || appraisalList;
+            
+            if (defaultFilename) {
+                const safeFilename = defaultFilename.replace(/[<>:"/\\|?*]+/g, '_');
+                document.getElementById('pdf-filename').value = safeFilename;
+            }
             const filename = document.getElementById('pdf-filename').value || '査定明細';
+            
             closePdfModal();
 
-            // Create Preview Container
             const previewContainer = document.createElement('div');
             previewContainer.id = 'pdf-preview-overlay';
             previewContainer.style.position = 'fixed';
@@ -832,7 +1093,6 @@
             previewContainer.style.boxSizing = 'border-box';
             previewContainer.style.overflowY = 'auto';
 
-            // Toolbar
             const toolbar = document.createElement('div');
             toolbar.className = 'flex gap-4 mb-4 bg-white p-3 rounded-xl shadow-lg sticky top-0 z-50';
             toolbar.innerHTML = `
@@ -844,7 +1104,6 @@
                 </button>
             `;
 
-            // A4 Paper Content
             const paper = document.createElement('div');
             paper.id = 'pdf-content-target';
             paper.style.width = '210mm';
@@ -856,12 +1115,11 @@
             paper.style.fontFamily = '"Inter", "Noto Sans JP", sans-serif';
             paper.style.color = '#000';
             
-            // Build Content
             let tableRows = '';
             let grandTotal = 0;
             let grossTotal = 0;
             
-            appraisalList.forEach((item, index) => {
+            listToPrint.forEach((item, index) => {
                 grandTotal += item.price;
                 const itemGross = Math.floor(item.unitPrice * item.weight);
                 const itemProfit = itemGross - item.price;
@@ -902,7 +1160,7 @@
                             <th style="padding: 12px; text-align: left;">品目</th>
                             <th style="padding: 12px; text-align: right;">重量</th>
                             <th style="padding: 12px; text-align: right;">単価</th>
-                            <th style="padding: 12px; text-align: center;">手数料</th>
+                            <th style="padding: 12px; text-align: center;">粗利率</th>
                             <th style="padding: 12px; text-align: right;">査定金額</th>
                             <th style="padding: 12px; text-align: right;">粗利</th>
                         </tr>
@@ -931,46 +1189,68 @@
             previewContainer.appendChild(paper);
             document.body.appendChild(previewContainer);
             
-            // Re-render icons inside new DOM
             lucide.createIcons();
         }
 
-        // 2. Execute Download
         function downloadPdf(filename) {
-            const element = document.getElementById('pdf-content-target');
-            const btn = document.querySelector('#pdf-preview-overlay button'); // Download button
+            const sourceElement = document.getElementById('pdf-content-target');
+            const btn = document.querySelector('#pdf-preview-overlay button');
             const originalText = btn.innerHTML;
             
             btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 生成中...`;
             lucide.createIcons();
             btn.disabled = true;
 
+            const clone = sourceElement.cloneNode(true);
+            
+            clone.style.boxShadow = 'none';
+            clone.style.margin = '0';
+            clone.style.width = '100%'; 
+            clone.style.maxWidth = '100%';
+
+            const pdfContainer = document.createElement('div');
+            pdfContainer.style.position = 'fixed';
+            pdfContainer.style.top = '0';
+            pdfContainer.style.left = '0';
+            pdfContainer.style.width = '190mm'; 
+            pdfContainer.style.zIndex = '5000';
+            pdfContainer.style.background = '#fff';
+            pdfContainer.style.visibility = 'visible';
+            
+            pdfContainer.appendChild(clone);
+            document.body.appendChild(pdfContainer);
+
             const opt = {
                 margin:       10,
                 filename:     `${filename}.pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> 完了`;
-                lucide.createIcons();
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
+            setTimeout(() => {
+                html2pdf().set(opt).from(clone).save().then(() => {
+                    document.body.removeChild(pdfContainer);
+                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> 完了`;
                     lucide.createIcons();
-                }, 2000);
-            }).catch(err => {
-                console.error(err);
-                alert("PDF生成に失敗しました");
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-                lucide.createIcons();
-            });
+                    setTimeout(() => {
+                        if (document.body.contains(btn)) {
+                            btn.innerHTML = originalText;
+                            btn.disabled = false;
+                            lucide.createIcons();
+                        }
+                    }, 2000);
+                }).catch(err => {
+                    console.error(err);
+                    if(pdfContainer.parentNode) document.body.removeChild(pdfContainer);
+                    alert("PDF生成に失敗しました");
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                    lucide.createIcons();
+                });
+            }, 100);
         }
 
-        // 3. Close Preview
         function closePreview() {
             const overlay = document.getElementById('pdf-preview-overlay');
             if (overlay) {
