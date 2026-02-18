@@ -306,6 +306,9 @@
                             <i data-lucide="list" class="w-4 h-4"></i> 査定明細
                         </h3>
                         <div class="flex items-center gap-2">
+                             <button onclick="requestClearList()" class="text-xs bg-white hover:bg-red-50 text-red-500 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-red-100" title="明細を一括削除">
+                                <i data-lucide="trash-2" class="w-3 h-3"></i> 一括削除
+                            </button>
                              <button onclick="openSaveHistoryModal()" class="text-xs bg-blue-50 hover:bg-blue-100 text-blue-600 px-2 py-1 rounded-md font-bold transition-colors flex items-center gap-1 border border-blue-200" title="履歴に保存">
                                 <i data-lucide="save" class="w-3 h-3"></i> 履歴保存
                             </button>
@@ -359,7 +362,7 @@
         </div>
     </div>
 
-    <!-- Modal (Confirmation) - z-index increased -->
+    <!-- Modal (Confirmation) - Single Delete -->
     <div id="confirm-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl scale-95 opacity-0 transition-all duration-200 transform" id="confirm-modal-content">
             <div class="mb-4 flex justify-center text-red-600">
@@ -374,7 +377,32 @@
         </div>
     </div>
 
-    <!-- Modal (PDF Filename) - z-index increased -->
+    <!-- Modal (Clear All Confirmation) -->
+    <div id="clear-confirm-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl scale-95 opacity-0 transition-all duration-200 transform" id="clear-confirm-modal-content">
+            <div class="mb-4 flex justify-center text-orange-500">
+                <i data-lucide="help-circle" class="w-12 h-12"></i>
+            </div>
+            <h3 class="text-lg font-bold mb-2 text-gray-800">明細を一括削除しますか？</h3>
+            <div id="clear-modal-warning" class="text-sm text-red-500 font-bold mb-6 hidden">
+                ※現在の明細はまだ履歴に保存されていません。
+            </div>
+            <p class="text-sm text-gray-600 mb-6">リストをすべてクリアして新しい査定を開始しますか？</p>
+            <div class="flex flex-col gap-2">
+                <button id="btn-save-and-clear" onclick="saveAndClear()" class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200 flex items-center justify-center gap-2">
+                    <i data-lucide="save" class="w-4 h-4"></i> 履歴に保存して削除
+                </button>
+                <button onclick="executeClearList()" class="w-full bg-red-600 text-white font-bold py-3 rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-200">
+                    保存せずに削除
+                </button>
+                <button onclick="closeClearConfirmModal()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl transition-colors">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal (PDF Filename) -->
     <div id="pdf-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
             <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
@@ -393,7 +421,7 @@
         </div>
     </div>
 
-    <!-- Modal (Save History) - z-index increased -->
+    <!-- Modal (Save History) -->
     <div id="save-history-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl animate-fade-in">
             <h3 class="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
@@ -412,7 +440,7 @@
         </div>
     </div>
     
-    <!-- Modal (History List) - z-index kept at 50 -->
+    <!-- Modal (History List) -->
     <div id="history-modal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4 backdrop-blur-sm">
         <div class="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl animate-fade-in max-h-[85vh] flex flex-col">
             <div class="flex justify-between items-center mb-4">
@@ -445,8 +473,6 @@
         </div>
     </div>
 
-    <!-- PDF Preview Container (Generated dynamically) -->
-
     <script>
         // --- Configuration: Net Japan Items ---
         const METAL_ITEMS = {
@@ -469,11 +495,9 @@
                 { id: 'pt850', label: 'Pt850', match: ['PT850'], exclude: [] },
             ],
             combination: [
-                // Pt900 Base
                 { id: 'pt900_k18_1_9', label: 'Pt900/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT900/K18', '900/K18'], ratio: ['10:90', '1:9'], exclude: [] },
                 { id: 'pt900_k18_5_5', label: 'Pt900/K18 半々', sub: 'Pt50% : Au50%', match: ['PT900/K18', '900/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
                 { id: 'pt900_k18_9_1', label: 'Pt900/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT900/K18', '900/K18'], ratio: ['90:10', '9:1'], exclude: [] },
-                // Pt850 Base
                 { id: 'pt850_k18_1_9', label: 'Pt850/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT850/K18', '850/K18'], ratio: ['10:90', '1:9'], exclude: [] },
                 { id: 'pt850_k18_5_5', label: 'Pt850/K18 半々', sub: 'Pt50% : Au50%', match: ['PT850/K18', '850/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
                 { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
@@ -497,13 +521,9 @@
             lucide.createIcons();
             generateTables();
             updateMemoryStatus();
-            
-            // Explicitly attach printPreview to window to avoid scope issues
             window.printPreview = printPreview;
-            
             const hist = localStorage.getItem('appraisalHistoryData');
             if (hist) appraisalHistory = JSON.parse(hist);
-
             document.getElementById('calc-weight').addEventListener('input', calculate);
             document.getElementById('calc-margin').addEventListener('input', (e) => {
                 document.getElementById('margin-display').innerText = `${e.target.value}%`;
@@ -525,9 +545,7 @@
                 const tr = document.createElement('tr');
                 tr.id = `row-${item.id}`;
                 tr.onclick = () => selectItem(item.id, item.label);
-                
                 const subLabel = item.sub ? `<div class="sub-label text-[10px] text-gray-400 font-normal">${item.sub}</div>` : '';
-
                 tr.innerHTML = `
                     <td class="font-bold text-gray-700 row-label">
                         ${item.label}
@@ -557,7 +575,6 @@
                     icon.classList.add('opacity-0');
                 }
             });
-
             const row = document.getElementById(`row-${id}`);
             if(row) {
                 row.classList.add('selected');
@@ -568,12 +585,9 @@
                     icon.classList.add('opacity-100', 'text-white');
                 }
             }
-            
             lucide.createIcons();
-
             const priceInput = document.getElementById(`price-${id}`);
             const price = parseInt(priceInput.value.replace(/,/g, '')) || 0;
-
             currentSelection = { id, price, name };
             document.getElementById('calc-metal-name').innerText = name;
             document.getElementById('calc-unit-price').innerText = `¥ ${price.toLocaleString()}`;
@@ -584,12 +598,10 @@
         function calculate() {
             const weight = parseFloat(document.getElementById('calc-weight').value) || 0;
             const margin = parseInt(document.getElementById('calc-margin').value) || 0;
-            
             if (currentSelection.price === 0) {
                 document.getElementById('calc-total').innerText = "¥ 0";
                 return;
             }
-
             const total = Math.floor(currentSelection.price * weight * (1 - margin / 100));
             document.getElementById('calc-total').innerText = `¥ ${total.toLocaleString()}`;
             const unit = currentSelection.price.toLocaleString();
@@ -606,7 +618,6 @@
         function addToList() {
             const weight = parseFloat(document.getElementById('calc-weight').value) || 0;
             const margin = parseInt(document.getElementById('calc-margin').value) || 0;
-            
             if (currentSelection.id === null || currentSelection.price === 0) {
                 showModal('alert-circle', 'エラー', '品位を選択し、価格が設定されていることを確認してください。', 'text-red-500');
                 return;
@@ -615,9 +626,7 @@
                 showModal('alert-circle', 'エラー', '重量を入力してください。', 'text-red-500');
                 return;
             }
-
             const total = Math.floor(currentSelection.price * weight * (1 - margin / 100));
-
             appraisalList.push({
                 name: currentSelection.name,
                 weight: weight,
@@ -625,14 +634,8 @@
                 margin: margin,
                 price: total
             });
-
             updateListUI();
-            
-            document.getElementById('calc-weight').value = '';
-            document.getElementById('calc-total').innerText = '¥ 0';
-            document.getElementById('calc-formula').innerText = '';
-            document.getElementById('calc-weight').focus();
-            
+            resetCalc();
             const listArea = document.querySelector('.bg-indigo-900');
             listArea.classList.add('ring-green-400');
             setTimeout(() => listArea.classList.remove('ring-green-400'), 300);
@@ -646,21 +649,17 @@
         function updateItemMargin(index, newMarginStr) {
             const newMargin = parseInt(newMarginStr);
             if (isNaN(newMargin) || newMargin < 0 || newMargin > 100) return;
-
             const item = appraisalList[index];
             item.margin = newMargin;
             item.price = Math.floor(item.unitPrice * item.weight * (1 - newMargin / 100));
-            
             updateListUI();
         }
 
         function updateListUI() {
             const tbody = document.getElementById('appraisal-list-body');
             tbody.innerHTML = '';
-
             let grandTotal = 0;
             let grossTotal = 0;
-
             if (appraisalList.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="7" class="text-center py-8 text-gray-400 text-xs">リストは空です<br>計算後に「追加」ボタンを押してください</td></tr>`;
             } else {
@@ -669,19 +668,14 @@
                     const itemGross = Math.floor(item.unitPrice * item.weight);
                     grossTotal += itemGross;
                     const itemProfit = itemGross - item.price;
-                    
                     let marginOptions = '';
                     let found = false;
-                    
                     for (let m = 10; m <= 90; m += 5) {
                         const selected = item.margin === m ? 'selected' : '';
                         if (selected) found = true;
                         marginOptions += `<option value="${m}" ${selected}>${m}%</option>`;
                     }
-                    if (!found) {
-                        marginOptions += `<option value="${item.margin}" selected>${item.margin}%</option>`;
-                    }
-
+                    if (!found) marginOptions += `<option value="${item.margin}" selected>${item.margin}%</option>`;
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-0";
                     tr.innerHTML = `
@@ -690,10 +684,7 @@
                         <td class="px-2 py-2 text-right text-gray-600">${item.weight}g</td>
                         <td class="px-2 py-2 text-center">
                             <div class="flex items-center justify-center">
-                                <select 
-                                    class="border border-gray-300 rounded px-1 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer"
-                                    onchange="updateItemMargin(${index}, this.value)"
-                                >
+                                <select class="border border-gray-300 rounded px-1 py-1 text-xs focus:ring-2 focus:ring-indigo-500 outline-none bg-white cursor-pointer" onchange="updateItemMargin(${index}, this.value)">
                                     ${marginOptions}
                                 </select>
                             </div>
@@ -701,153 +692,153 @@
                         <td class="px-3 py-2 text-right font-mono font-bold text-indigo-900">¥ ${item.price.toLocaleString()}</td>
                         <td class="px-3 py-2 text-right font-mono text-xs font-bold text-green-600">+¥ ${itemProfit.toLocaleString()}</td>
                         <td class="px-2 py-2 text-center">
-                            <button onclick="deleteItem(${index})" class="text-gray-400 hover:text-red-500 transition-colors p-1">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
+                            <button onclick="deleteItem(${index})" class="text-gray-400 hover:text-red-500 transition-colors p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-
             const totalProfit = grossTotal - grandTotal;
-
             document.getElementById('list-count').innerText = `${appraisalList.length}件`;
             document.getElementById('grand-total').innerText = `¥ ${grandTotal.toLocaleString()}`;
             document.getElementById('total-profit').innerText = `+ ¥ ${totalProfit.toLocaleString()}`;
-            
             lucide.createIcons();
         }
         
+        // --- 一括削除関連の機能 ---
+        function requestClearList() {
+            if (appraisalList.length === 0) return;
+
+            const modal = document.getElementById('clear-confirm-modal');
+            const content = document.getElementById('clear-confirm-modal-content');
+            const warning = document.getElementById('clear-modal-warning');
+            const btnSave = document.getElementById('btn-save-and-clear');
+
+            if (isCurrentListSaved()) {
+                warning.classList.add('hidden');
+                btnSave.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                warning.classList.remove('hidden');
+                btnSave.classList.remove('opacity-50', 'pointer-events-none');
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
+            lucide.createIcons();
+        }
+
+        function closeClearConfirmModal() {
+            const modal = document.getElementById('clear-confirm-modal');
+            const content = document.getElementById('clear-confirm-modal-content');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function isCurrentListSaved() {
+            if (appraisalList.length === 0) return true;
+            const currentStr = JSON.stringify(appraisalList);
+            return appraisalHistory.some(h => JSON.stringify(h.items) === currentStr);
+        }
+
+        function saveAndClear() {
+            // executeSaveHistoryと同様の処理
+            const now = new Date();
+            const id = Date.now();
+            const date = now.toLocaleString('ja-JP');
+            const title = `自動保存_${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}_${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}`;
+            const grandTotal = document.getElementById('grand-total').innerText;
+            const items = JSON.parse(JSON.stringify(appraisalList));
+
+            appraisalHistory.unshift({ id, date, title, grandTotal, items });
+            localStorage.setItem('appraisalHistoryData', JSON.stringify(appraisalHistory));
+            
+            executeClearList();
+            showModal('check-circle', '保存と削除', '履歴に保存してから明細をクリアしました。', 'text-blue-600');
+        }
+
+        function executeClearList() {
+            appraisalList = [];
+            updateListUI();
+            closeClearConfirmModal();
+        }
+
+        // --- その他機能 ---
         function manualInputChanged(type) {
             let valStr = document.getElementById(`manual-${type}`).value;
             const price = parseInt(valStr.replace(/,/g, '')) || 0;
-            
             let targetId = '';
             if (type === 'gold') targetId = 'k24_ig';
             if (type === 'platinum') targetId = 'pt1000_ig';
             if (type === 'silver') targetId = 'sv1000_ig';
             if (type === 'palladium') targetId = 'pd_ig';
-
             const rowInput = document.getElementById(`price-${targetId}`);
             if (rowInput) {
                 rowInput.value = price > 0 ? price.toLocaleString() : '-';
-                if (currentSelection.id === targetId) {
-                    selectItem(targetId, currentSelection.name);
-                }
+                if (currentSelection.id === targetId) selectItem(targetId, currentSelection.name);
             }
         }
 
-        // --- ENHANCED PARSING LOGIC ---
         function parseImportText() {
             const rawText = document.getElementById('import-text').value;
             if (!rawText) {
                 showModal('alert-circle', 'テキストがありません', '公式サイトからコピーして貼り付けてください。', 'text-yellow-500');
                 return;
             }
-
-            // Normalize
-            const text = rawText
-                .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
-                .replace(/[Ａ-Ｚａ-ｚ]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
-                .replace(/[,，円￥]/g, '')
-                .replace(/[／]/g, '/') 
-                .replace(/：/g, ':') 
-                .toUpperCase();
-
-            // 1. Ticker / Single Line Parsing (Enhanced regex)
+            const text = rawText.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[Ａ-Ｚａ-ｚ]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).replace(/[,，円￥]/g, '').replace(/[／]/g, '/').replace(/：/g, ':').toUpperCase();
             const tickerPatterns = [
                 { id: 'k24_ig', regex: /(?:金|GOLD|K24)(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{4,7})/ },
                 { id: 'pt1000_ig', regex: /(?:PT|PLATINUM|プラチナ)(?:1000)?(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{3,7})/ },
-                // Silver: Allow "銀 398" without "Ingot", and "Sv1000 398"
                 { id: 'sv1000_ig', regex: /(?:銀|SILVER|SV)(?:1000)?(?:IG|INGOT|インゴット)?\s*[:：]?\s*(\d{3,7})/ }, 
                 { id: 'pd_ig', regex: /(?:PD|PALLADIUM|パラジウム)\s*[:：]?\s*(\d{3,7})/ }
             ];
-
             tickerPatterns.forEach(item => {
                 const match = text.match(item.regex);
                 if (match && match[1]) {
                     const price = parseInt(match[1]);
-                    if (item.id.includes('sv') && (price === 1000 || price === 950 || price === 925)) {
-                        return; 
-                    }
+                    if (item.id.includes('sv') && (price === 1000 || price === 950 || price === 925)) return; 
                     const min = item.id.includes('sv') ? 10 : 2000;
-                    if (price > min) {
-                        updateInput(item.id, price);
-                    }
+                    if (price > min) updateInput(item.id, price);
                 }
             });
-
-            // 2. Line-by-Line Parsing
             const lines = text.split(/\r\n|\r|\n/).map(l => l.trim()).filter(l => l.length > 0);
-            
             Object.keys(METAL_ITEMS).forEach(type => {
                 METAL_ITEMS[type].forEach(item => {
-                    // Pass ratio keywords if they exist
                     const price = findPriceRobust(lines, item.match, item.exclude, type, item.ratio);
-                    if (price > 0) {
-                        updateInput(item.id, price);
-                    }
+                    if (price > 0) updateInput(item.id, price);
                 });
             });
-
-            // Special Fallback for Top Card (Silver)
-            const igVal = document.getElementById('price-sv1000_ig').value;
-            const scrapVal = document.getElementById('price-sv1000').value;
-            if ((!igVal || igVal === '-') && scrapVal && scrapVal !== '-') {
-                document.getElementById('manual-silver').value = scrapVal;
-            }
-
             let filledCount = 0;
             document.querySelectorAll('input[id^="price-"]').forEach(input => {
                 if(input.value && input.value !== '-') filledCount++;
             });
-
             if (filledCount > 0) {
                 document.getElementById('import-text').value = '';
-                showModal('check-circle', '解析完了', 
-                    `価格情報を抽出・更新しました。<br>現在 ${filledCount} 項目が入力されています。`, 
-                    'text-green-600'
-                );
+                showModal('check-circle', '解析完了', `価格情報を抽出・更新しました。<br>現在 ${filledCount} 項目が入力されています。`, 'text-green-600');
             } else {
-                showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。<br>貼り付けたテキストに「銀 398」や「K24 13000」のような数値が含まれているか確認してください。', 'text-red-500');
+                showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。', 'text-red-500');
             }
         }
 
-        // Updated Finder with Ratio Support
         function findPriceRobust(lines, matchKeywords, excludeKeywords, type, ratioKeywords = []) {
             const minPrice = type === 'silver' ? 10 : 2000;
             const maxPrice = 200000;
-
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
-
                 if (!matchKeywords.some(kw => line.includes(kw))) continue;
                 if (excludeKeywords.some(kw => line.includes(kw))) continue;
-
                 if (ratioKeywords && ratioKeywords.length > 0) {
                     if (!ratioKeywords.some(kw => line.includes(kw))) continue;
                 }
-
                 for (let j = 0; j <= 2; j++) {
                     if (i + j >= lines.length) break;
-                    
                     const targetLine = lines[i+j];
                     const numbers = targetLine.match(/(\d{2,7})/g); 
-                    
                     if (numbers) {
                         for (let numStr of numbers) {
                             const val = parseInt(numStr);
-                            
-                            // Guards
                             if (type === 'silver' && (val === 1000 || val === 950 || val === 925 || val === 900)) continue;
-                            
-                            // Ratio Guard
                             if (val === 90 || val === 10 || val === 50) continue; 
-
-                            if (val > minPrice && val < maxPrice) { 
-                                return val;
-                            }
+                            if (val > minPrice && val < maxPrice) return val;
                         }
                     }
                 }
@@ -858,36 +849,24 @@
         function updateInput(id, price) {
             const input = document.getElementById(`price-${id}`);
             if (input) {
-                const currentVal = parseInt(input.value.replace(/,/g, '')) || 0;
-                if (currentVal !== price) {
-                    input.value = price.toLocaleString();
-                    input.parentElement.classList.add('bg-green-100');
-                    setTimeout(() => input.parentElement.classList.remove('bg-green-100'), 1500);
-                    
-                    // Sync Top Cards
-                    if(id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
-                    if(id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
-                    if(id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
-                    if(id === 'pd_ig') document.getElementById('manual-palladium').value = price.toLocaleString();
-                }
+                input.value = price.toLocaleString();
+                if(id === 'k24_ig') document.getElementById('manual-gold').value = price.toLocaleString();
+                if(id === 'pt1000_ig') document.getElementById('manual-platinum').value = price.toLocaleString();
+                if(id === 'sv1000_ig') document.getElementById('manual-silver').value = price.toLocaleString();
+                if(id === 'pd_ig') document.getElementById('manual-palladium').value = price.toLocaleString();
             }
         }
 
-        // --- Memory Functions (LocalStorage) ---
         function saveMarketData() {
             const data = {};
-            document.querySelectorAll('input[id^="price-"]').forEach(input => {
-                data[input.id] = input.value;
-            });
+            document.querySelectorAll('input[id^="price-"]').forEach(input => data[input.id] = input.value);
             data['manual-gold'] = document.getElementById('manual-gold').value;
             data['manual-platinum'] = document.getElementById('manual-platinum').value;
             data['manual-silver'] = document.getElementById('manual-silver').value;
             data['manual-palladium'] = document.getElementById('manual-palladium').value;
-
             const timestamp = new Date().toLocaleString('ja-JP');
             localStorage.setItem('marketData', JSON.stringify(data));
             localStorage.setItem('marketDataTime', timestamp);
-            
             updateMemoryStatus();
             showModal('check-circle', '保存完了', '現在の相場価格をブラウザに記憶しました。', 'text-blue-600');
         }
@@ -895,15 +874,10 @@
         function loadMarketData() {
             const json = localStorage.getItem('marketData');
             if (!json) return;
-            
             const data = JSON.parse(json);
             Object.keys(data).forEach(id => {
                 const input = document.getElementById(id);
-                if (input) {
-                    input.value = data[id];
-                    input.parentElement.classList.add('bg-blue-50');
-                    setTimeout(() => input.parentElement.classList.remove('bg-blue-50'), 1000);
-                }
+                if (input) input.value = data[id];
             });
             if (currentSelection.id) selectItem(currentSelection.id, currentSelection.name);
             showModal('check-circle', '復元完了', '記憶していた相場価格を呼び出しました。', 'text-green-600');
@@ -913,7 +887,6 @@
             const time = localStorage.getItem('marketDataTime');
             const btn = document.getElementById('btn-load-memory');
             const display = document.getElementById('memory-timestamp');
-            
             if (time) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -926,17 +899,11 @@
             lucide.createIcons();
         }
 
-        // --- History Functions ---
         function openSaveHistoryModal() {
-            if (appraisalList.length === 0) {
-                showModal('alert-circle', 'エラー', '保存する明細がありません。', 'text-red-500');
-                return;
-            }
-            
+            if (appraisalList.length === 0) return;
             const now = new Date();
             const defaultTitle = `査定履歴_${now.getFullYear()}${('0'+(now.getMonth()+1)).slice(-2)}${('0'+now.getDate()).slice(-2)}_${('0'+now.getHours()).slice(-2)}${('0'+now.getMinutes()).slice(-2)}`;
             document.getElementById('history-title').value = defaultTitle;
-            
             document.getElementById('save-history-modal').classList.remove('hidden');
         }
 
@@ -947,26 +914,17 @@
         function executeSaveHistory() {
             const titleInput = document.getElementById('history-title');
             const title = titleInput.value.trim() || titleInput.placeholder; 
-
-            const currentItemsJson = JSON.stringify(appraisalList);
-            const isDuplicate = appraisalHistory.some(hist => {
-                return JSON.stringify(hist.items) === currentItemsJson;
-            });
-
-            if (isDuplicate) {
+            if (isCurrentListSaved()) {
                 closeSaveHistoryModal();
-                showModal('alert-triangle', '保存エラー', '全く同じ内容の査定履歴が既に存在します。<br>重複保存はできません。', 'text-red-500');
+                showModal('alert-triangle', '保存済み', 'この内容はすでに履歴に存在します。', 'text-yellow-500');
                 return;
             }
-
             const id = Date.now();
             const date = new Date().toLocaleString('ja-JP');
             const grandTotal = document.getElementById('grand-total').innerText;
             const items = JSON.parse(JSON.stringify(appraisalList));
-
             appraisalHistory.unshift({ id, date, title, grandTotal, items });
             localStorage.setItem('appraisalHistoryData', JSON.stringify(appraisalHistory));
-            
             closeSaveHistoryModal();
             showModal('check-circle', '履歴保存完了', '現在の査定内容を履歴に保存しました。', 'text-blue-600');
         }
@@ -974,33 +932,25 @@
         function openHistoryModal() {
             const tbody = document.getElementById('history-list-body');
             tbody.innerHTML = '';
-
             if (appraisalHistory.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-gray-400">保存された履歴はありません</td></tr>`;
             } else {
                 appraisalHistory.forEach((hist) => {
                     const tr = document.createElement('tr');
                     tr.className = "border-b border-gray-100 hover:bg-gray-50";
-                    
                     const displayTitle = hist.title ? `<span class="font-bold block text-gray-800">${hist.title}</span><span class="text-xs text-gray-400">${hist.date}</span>` : hist.date;
-
                     tr.innerHTML = `
                         <td class="px-4 py-3 text-gray-700">${displayTitle}</td>
                         <td class="px-4 py-3 text-center text-gray-600">${hist.items.length}点</td>
                         <td class="px-4 py-3 text-right font-bold text-indigo-900">${hist.grandTotal}</td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="previewHistory(${hist.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors mr-2">
-                                PDF発行
-                            </button>
-                            <button onclick="confirmDeleteHistory(${hist.id})" class="text-gray-400 hover:text-red-500 p-1">
-                                <i data-lucide="trash-2" class="w-4 h-4"></i>
-                            </button>
+                            <button onclick="previewHistory(${hist.id})" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors mr-2">PDF発行</button>
+                            <button onclick="confirmDeleteHistory(${hist.id})" class="text-gray-400 hover:text-red-500 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
                         </td>
                     `;
                     tbody.appendChild(tr);
                 });
             }
-            
             document.getElementById('history-modal').classList.remove('hidden');
             lucide.createIcons();
         }
@@ -1014,15 +964,9 @@
             const modal = document.getElementById('confirm-modal');
             const content = document.getElementById('confirm-modal-content');
             const btn = document.getElementById('confirm-delete-btn');
-            
-            btn.onclick = function() {
-                executeDeleteHistory();
-            };
-            
+            btn.onclick = executeDeleteHistory;
             modal.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('scale-95', 'opacity-0');
-            }, 10);
+            setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
             lucide.createIcons();
         }
 
@@ -1031,15 +975,12 @@
             const content = document.getElementById('confirm-modal-content');
             content.classList.add('scale-95', 'opacity-0');
             setTimeout(() => modal.classList.add('hidden'), 200);
-            deleteTargetId = null;
         }
 
         function executeDeleteHistory() {
             if (deleteTargetId === null) return;
-            
             appraisalHistory = appraisalHistory.filter(h => h.id !== deleteTargetId);
             localStorage.setItem('appraisalHistoryData', JSON.stringify(appraisalHistory));
-            
             closeConfirmModal();
             openHistoryModal(); 
         }
@@ -1047,23 +988,13 @@
         function previewHistory(id) {
             const hist = appraisalHistory.find(h => h.id === id);
             if (!hist) return;
-            
             closeHistoryModal();
-            const filename = hist.title ? hist.title : `履歴_${hist.date.split(' ')[0].replace(/\//g, '')}`;
-            showPdfPreview(hist.items, filename);
+            showPdfPreview(hist.items, hist.title);
         }
 
-        // --- PDF Functions ---
-        
         function openPdfModal() {
-            if (appraisalList.length === 0) {
-                showModal('alert-circle', 'エラー', '保存する明細がありません。', 'text-red-500');
-                return;
-            }
-            const today = new Date();
-            const dateStr = today.getFullYear() +
-                            ('0' + (today.getMonth() + 1)).slice(-2) +
-                            ('0' + today.getDate()).slice(-2);
+            if (appraisalList.length === 0) return;
+            const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
             document.getElementById('pdf-filename').value = `査定明細_${dateStr}`;
             document.getElementById('pdf-modal').classList.remove('hidden');
         }
@@ -1074,266 +1005,69 @@
 
         function showPdfPreview(targetList = null, defaultFilename = null) {
             const listToPrint = targetList || appraisalList;
-            
-            if (defaultFilename) {
-                const safeFilename = defaultFilename.replace(/[<>:"/\\|?*]+/g, '_');
-                document.getElementById('pdf-filename').value = safeFilename;
-            }
-            const filename = document.getElementById('pdf-filename').value || '査定明細';
-            
+            const filename = (defaultFilename || document.getElementById('pdf-filename').value || '査定明細').replace(/[<>:"/\\|?*]+/g, '_');
             closePdfModal();
-
             const previewContainer = document.createElement('div');
             previewContainer.id = 'pdf-preview-overlay';
-            previewContainer.style.position = 'fixed';
-            previewContainer.style.top = '0';
-            previewContainer.style.left = '0';
-            previewContainer.style.width = '100%';
-            previewContainer.style.height = '100%';
-            previewContainer.style.zIndex = '9999';
-            previewContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
-            previewContainer.style.backdropFilter = 'blur(5px)';
-            previewContainer.style.display = 'flex';
-            previewContainer.style.flexDirection = 'column';
-            previewContainer.style.alignItems = 'center';
-            previewContainer.style.padding = '20px';
-            previewContainer.style.boxSizing = 'border-box';
-            previewContainer.style.overflowY = 'auto';
-
+            previewContainer.style = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:9999;background:rgba(0,0,0,0.8);backdrop-filter:blur(5px);display:flex;flex-direction:column;align-items:center;padding:20px;box-sizing:border-box;overflow-y:auto;';
             const toolbar = document.createElement('div');
             toolbar.className = 'flex gap-4 mb-4 bg-white p-3 rounded-xl shadow-lg sticky top-0 z-50';
             toolbar.innerHTML = `
-                <button onclick="downloadPdf('${filename}')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-md">
-                    <i data-lucide="download" class="w-4 h-4"></i> PDFダウンロード
-                </button>
-                <button onclick="window.printPreview()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2 shadow-md">
-                    <i data-lucide="printer" class="w-4 h-4"></i> 印刷
-                </button>
-                <button onclick="closePreview()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2">
-                    <i data-lucide="x" class="w-4 h-4"></i> 閉じる
-                </button>
+                <button onclick="downloadPdf('${filename}')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2"><i data-lucide="download"></i> PDF保存</button>
+                <button onclick="window.printPreview()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2"><i data-lucide="printer"></i> 印刷</button>
+                <button onclick="closePreview()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-6 rounded-lg transition-colors flex items-center gap-2"><i data-lucide="x"></i> 閉じる</button>
             `;
-
             const paper = document.createElement('div');
             paper.id = 'pdf-content-target';
-            paper.style.width = '210mm';
-            paper.style.minHeight = '297mm';
-            paper.style.backgroundColor = '#fff';
-            paper.style.padding = '40px';
-            paper.style.boxSizing = 'border-box';
-            paper.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
-            paper.style.fontFamily = '"Inter", "Noto Sans JP", sans-serif';
-            paper.style.color = '#000';
-            
+            paper.style = 'width:210mm;min-height:297mm;background:#fff;padding:40px;box-sizing:border-box;box-shadow:0 10px 25px rgba(0,0,0,0.5);font-family:"Noto Sans JP",sans-serif;color:#000;';
             let tableRows = '';
             let grandTotal = 0;
             let grossTotal = 0;
-            
             listToPrint.forEach((item, index) => {
                 grandTotal += item.price;
                 const itemGross = Math.floor(item.unitPrice * item.weight);
                 const itemProfit = itemGross - item.price;
                 grossTotal += itemGross;
-                
-                tableRows += `
-                    <tr style="border-bottom: 1px solid #ddd;">
-                        <td style="padding: 10px; text-align: center;">${index + 1}</td>
-                        <td style="padding: 10px;">${item.name}</td>
-                        <td style="padding: 10px; text-align: right;">${item.weight} g</td>
-                        <td style="padding: 10px; text-align: right;">¥ ${item.unitPrice.toLocaleString()}</td>
-                        <td style="padding: 10px; text-align: center;">${item.margin}%</td>
-                        <td style="padding: 10px; text-align: right;">¥ ${item.price.toLocaleString()}</td>
-                        <td style="padding: 10px; text-align: right; color: #16a34a;">+¥ ${itemProfit.toLocaleString()}</td>
-                    </tr>
-                `;
+                tableRows += `<tr style="border-bottom: 1px solid #ddd;"><td style="padding:10px;text-align:center;">${index+1}</td><td style="padding:10px;">${item.name}</td><td style="padding:10px;text-align:right;">${item.weight} g</td><td style="padding:10px;text-align:right;">¥ ${item.unitPrice.toLocaleString()}</td><td style="padding:10px;text-align:center;">${item.margin}%</td><td style="padding:10px;text-align:right;">¥ ${item.price.toLocaleString()}</td><td style="padding:10px;text-align:right;color:#16a34a;">+¥ ${itemProfit.toLocaleString()}</td></tr>`;
             });
-            
-            const totalProfit = grossTotal - grandTotal;
-
-            paper.innerHTML = `
-                <div style="text-align: center; margin-bottom: 40px;">
-                    <h1 style="font-size: 28px; font-weight: bold; margin-bottom: 10px; color: #111;">御見積書 (査定明細)</h1>
-                    <div style="width: 100px; height: 3px; background-color: #333; margin: 0 auto;"></div>
-                </div>
-                
-                <div style="display: flex; justify-content: space-between; margin-bottom: 30px;">
-                    <div></div>
-                    <div style="text-align: right; font-size: 14px; color: #333;">
-                        <p>発行日: ${new Date().toLocaleDateString('ja-JP')}</p>
-                    </div>
-                </div>
-
-                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-bottom: 30px;">
-                    <thead>
-                        <tr style="background-color: #f3f4f6; border-top: 2px solid #333; border-bottom: 2px solid #333;">
-                            <th style="padding: 12px; text-align: center; width: 50px;">No.</th>
-                            <th style="padding: 12px; text-align: left;">品目</th>
-                            <th style="padding: 12px; text-align: right;">重量</th>
-                            <th style="padding: 12px; text-align: right;">単価</th>
-                            <th style="padding: 12px; text-align: center;">手数料</th>
-                            <th style="padding: 12px; text-align: right;">査定金額</th>
-                            <th style="padding: 12px; text-align: right;">粗利</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows}
-                    </tbody>
-                    <tfoot>
-                        <tr style="border-top: 2px solid #333;">
-                            <td colspan="5" style="padding: 20px 10px; text-align: right; font-weight: bold; font-size: 18px;">買取合計金額</td>
-                            <td colspan="2" style="padding: 20px 10px; text-align: right; font-weight: bold; font-size: 24px; color: #111;">¥ ${grandTotal.toLocaleString()}</td>
-                        </tr>
-                        <tr>
-                            <td colspan="5" style="padding: 5px 10px; text-align: right; color: #666; font-size: 12px;">想定粗利合計</td>
-                            <td colspan="2" style="padding: 5px 10px; text-align: right; color: #16a34a; font-weight: bold; font-size: 14px;">+¥ ${totalProfit.toLocaleString()}</td>
-                        </tr>
-                    </tfoot>
-                </table>
-                
-                <div style="text-align: center; margin-top: 50px; color: #999; font-size: 12px;">
-                    本見積書はシステムによる概算計算結果です。
-                </div>
-            `;
-
+            paper.innerHTML = `<div style="text-align:center;margin-bottom:40px;"><h1 style="font-size:28px;font-weight:bold;margin-bottom:10px;">御見積書 (査定明細)</h1><div style="width:100px;height:3px;background:#333;margin:0 auto;"></div></div><div style="display:flex;justify-content:flex-end;margin-bottom:30px;font-size:14px;">発行日: ${new Date().toLocaleDateString('ja-JP')}</div><table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:30px;"><thead><tr style="background:#f3f4f6;border-top:2px solid #333;border-bottom:2px solid #333;"><th style="padding:12px;text-align:center;">No.</th><th style="padding:12px;text-align:left;">品目</th><th style="padding:12px;text-align:right;">重量</th><th style="padding:12px;text-align:right;">単価</th><th style="padding:12px;text-align:center;">手数料</th><th style="padding:12px;text-align:right;">査定金額</th><th style="padding:12px;text-align:right;">粗利</th></tr></thead><tbody>${tableRows}</tbody><tfoot><tr style="border-top:2px solid #333;"><td colspan="5" style="padding:20px 10px;text-align:right;font-weight:bold;font-size:18px;">買取合計金額</td><td colspan="2" style="padding:20px 10px;text-align:right;font-weight:bold;font-size:24px;">¥ ${grandTotal.toLocaleString()}</td></tr></tfoot></table><div style="text-align:center;margin-top:50px;color:#999;font-size:12px;">本見積書はシステムによる概算計算結果です。</div>`;
             previewContainer.appendChild(toolbar);
             previewContainer.appendChild(paper);
             document.body.appendChild(previewContainer);
-            
             lucide.createIcons();
         }
 
         function downloadPdf(filename) {
-            const sourceElement = document.getElementById('pdf-content-target');
-            const btn = document.querySelector('#pdf-preview-overlay button');
-            const originalText = btn.innerHTML;
-            
-            btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 生成中...`;
-            lucide.createIcons();
-            btn.disabled = true;
-
-            const clone = sourceElement.cloneNode(true);
-            
-            clone.style.boxShadow = 'none';
-            clone.style.margin = '0';
-            clone.style.width = '100%'; 
-            clone.style.maxWidth = '100%';
-
-            const pdfContainer = document.createElement('div');
-            pdfContainer.style.position = 'fixed';
-            pdfContainer.style.top = '0';
-            pdfContainer.style.left = '0';
-            pdfContainer.style.width = '190mm'; 
-            pdfContainer.style.zIndex = '5000';
-            pdfContainer.style.background = '#fff';
-            pdfContainer.style.visibility = 'visible';
-            
-            pdfContainer.appendChild(clone);
-            document.body.appendChild(pdfContainer);
-
-            const opt = {
-                margin:       10,
-                filename:     `${filename}.pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            setTimeout(() => {
-                html2pdf().set(opt).from(clone).save().then(() => {
-                    document.body.removeChild(pdfContainer);
-                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> 完了`;
-                    lucide.createIcons();
-                    setTimeout(() => {
-                        if (document.body.contains(btn)) {
-                            btn.innerHTML = originalText;
-                            btn.disabled = false;
-                            lucide.createIcons();
-                        }
-                    }, 2000);
-                }).catch(err => {
-                    console.error(err);
-                    if(pdfContainer.parentNode) document.body.removeChild(pdfContainer);
-                    alert("PDF生成に失敗しました");
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                    lucide.createIcons();
-                });
-            }, 100);
+            const el = document.getElementById('pdf-content-target');
+            const opt = { margin: 10, filename: `${filename}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+            html2pdf().set(opt).from(el).save().then(() => showModal('check', '保存完了', 'PDFをダウンロードしました。', 'text-green-600'));
         }
 
-        // Print Function attached to window
         function printPreview() {
             const content = document.getElementById('pdf-content-target').innerHTML;
-            
             const iframe = document.createElement('iframe');
-            iframe.style.position = 'fixed';
-            iframe.style.right = '0';
-            iframe.style.bottom = '0';
-            iframe.style.width = '0';
-            iframe.style.height = '0';
-            iframe.style.border = '0';
+            iframe.style = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
             document.body.appendChild(iframe);
-            
             const doc = iframe.contentWindow.document;
             doc.open();
-            doc.write(`
-                <html>
-                <head>
-                    <title>査定明細印刷</title>
-                    <style>
-                        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
-                        body { 
-                            font-family: 'Inter', 'Noto Sans JP', sans-serif; 
-                            margin: 0; 
-                            padding: 20px;
-                            color: #000;
-                        }
-                        table { width: 100%; border-collapse: collapse; }
-                        th, td { padding: 8px; border-bottom: 1px solid #ddd; }
-                        th { border-top: 2px solid #333; border-bottom: 2px solid #333; }
-                        tfoot tr { border-top: 2px solid #333; }
-                        @media print {
-                            body { -webkit-print-color-adjust: exact; }
-                            @page { size: A4; margin: 10mm; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    ${content}
-                </body>
-                </html>
-            `);
+            doc.write(`<html><head><title>印刷</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');body{font-family:'Noto Sans JP',sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;}th,td{padding:8px;border-bottom:1px solid #ddd;}th{border-top:2px solid #333;border-bottom:2px solid #333;}@media print{@page{size:A4;margin:10mm;}}</style></head><body>${content}</body></html>`);
             doc.close();
-            
-            iframe.onload = function() {
-                setTimeout(() => {
-                    iframe.contentWindow.focus();
-                    iframe.contentWindow.print();
-                    setTimeout(() => document.body.removeChild(iframe), 1000);
-                }, 500);
-            };
+            iframe.onload = () => { iframe.contentWindow.print(); setTimeout(() => document.body.removeChild(iframe), 1000); };
         }
-        window.printPreview = printPreview;
 
         function closePreview() {
             const overlay = document.getElementById('pdf-preview-overlay');
-            if (overlay) {
-                document.body.removeChild(overlay);
-            }
+            if (overlay) document.body.removeChild(overlay);
         }
 
         function showModal(iconName, title, text, iconColor = 'text-indigo-600') {
             const modal = document.getElementById('modal');
             const content = document.getElementById('modal-content');
-            
             document.getElementById('modal-icon').innerHTML = `<i data-lucide="${iconName}" class="w-12 h-12 ${iconColor}"></i>`;
             document.getElementById('modal-title').innerText = title;
             document.getElementById('modal-text').innerHTML = text;
-            
             modal.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('scale-95', 'opacity-0');
-            }, 10);
+            setTimeout(() => content.classList.remove('scale-95', 'opacity-0'), 10);
             lucide.createIcons();
         }
 
