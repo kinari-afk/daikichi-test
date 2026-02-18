@@ -15,10 +15,17 @@
         
         /* Table Styles */
         .price-table th { @apply bg-gray-100 text-gray-600 font-bold py-2 px-3 text-left text-xs uppercase tracking-wider; }
-        .price-table td { @apply py-2 px-3 border-b border-gray-100 text-sm transition-colors duration-200; }
+        .price-table td { @apply py-2 px-3 border-b border-gray-100 text-sm transition-all duration-200; }
         .price-table tr { @apply cursor-pointer; } 
-        .price-table tr:hover td { @apply bg-blue-50; }
+        
+        /* Hover Effect: ポインターが指している行を強調 */
+        .price-table tr:hover td { @apply bg-indigo-50 text-indigo-700; }
+        .price-table tr td:first-child { border-left: 4px solid transparent; }
+        .price-table tr:hover td:first-child { border-left-color: #6366f1; } /* indigo-500 */
+        
+        /* Selected State */
         .price-table tr.selected td { @apply bg-indigo-600 text-white border-indigo-600; }
+        .price-table tr.selected td:first-child { border-left-color: #ffffff; }
         .price-table tr.selected td input { @apply text-white; }
         .price-table tr.selected td .row-label { @apply text-white; }
         .price-table tr.selected td .sub-label { @apply text-indigo-200; }
@@ -183,9 +190,8 @@
                     <table class="w-full price-table">
                         <thead>
                             <tr>
-                                <th class="w-2/5">品位</th>
-                                <th class="w-2/5 text-right">買取価格</th>
-                                <th class="w-1/5 text-center">選択</th>
+                                <th class="w-1/2">品位</th>
+                                <th class="w-1/2 text-right">買取価格</th>
                             </tr>
                         </thead>
                         <tbody id="table-gold"></tbody>
@@ -203,9 +209,8 @@
                     <table class="w-full price-table">
                         <thead>
                             <tr>
-                                <th class="w-2/5">品位</th>
-                                <th class="w-2/5 text-right">買取価格</th>
-                                <th class="w-1/5 text-center">選択</th>
+                                <th class="w-1/2">品位</th>
+                                <th class="w-1/2 text-right">買取価格</th>
                             </tr>
                         </thead>
                         <tbody id="table-platinum"></tbody>
@@ -223,9 +228,8 @@
                     <table class="w-full price-table">
                         <thead>
                             <tr>
-                                <th class="w-2/5">品位 <span class="text-[10px] font-normal text-gray-500 ml-1">(割合目安)</span></th>
-                                <th class="w-2/5 text-right">買取価格</th>
-                                <th class="w-1/5 text-center">選択</th>
+                                <th class="w-1/2">品位 <span class="text-[10px] font-normal text-gray-500 ml-1">(割合目安)</span></th>
+                                <th class="w-1/2 text-right">買取価格</th>
                             </tr>
                         </thead>
                         <tbody id="table-combination"></tbody>
@@ -240,6 +244,12 @@
                         </h2>
                     </div>
                     <table class="w-full price-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1/2">品位</th>
+                                <th class="w-1/2 text-right">買取価格</th>
+                            </tr>
+                        </thead>
                         <tbody id="table-palladium"></tbody>
                     </table>
                 </div>
@@ -250,6 +260,12 @@
                         <h2 class="font-bold text-gray-600 text-sm">銀 (SILVER)</h2>
                     </div>
                     <table class="w-full price-table">
+                        <thead>
+                            <tr>
+                                <th class="w-1/2">品位</th>
+                                <th class="w-1/2 text-right">買取価格</th>
+                            </tr>
+                        </thead>
                         <tbody id="table-silver"></tbody>
                     </table>
                 </div>
@@ -515,7 +531,7 @@
                 { id: 'pt900_k18_9_1', label: 'Pt900/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT900/K18', '900/K18'], ratio: ['90:10', '9:1'], exclude: [] },
                 { id: 'pt850_k18_1_9', label: 'Pt850/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT850/K18', '850/K18'], ratio: ['10:90', '1:9'], exclude: [] },
                 { id: 'pt850_k18_5_5', label: 'Pt850/K18 半々', sub: 'Pt50% : Au50%', match: ['PT850/K18', '850/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
-                { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['Pt850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
+                { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
             ],
             palladium: [
                 { id: 'pd_ig', label: 'インゴット (Pd)', match: ['PD', 'INGOT', 'パラジウム'], exclude: [] },
@@ -596,9 +612,6 @@
                             class="w-full bg-transparent outline-none border-b border-transparent focus:border-indigo-500 font-mono text-right font-bold text-gray-800 pointer-events-none" 
                             placeholder="-" readonly>
                     </td>
-                    <td class="text-center text-gray-400 icon-cell">
-                        <i data-lucide="chevron-right" class="w-4 h-4 inline opacity-0 group-hover:opacity-100 transition-opacity"></i>
-                    </td>
                 `;
                 container.appendChild(tr);
             });
@@ -608,22 +621,10 @@
         function selectItem(id, name) {
             document.querySelectorAll('tr').forEach(r => {
                 r.classList.remove('selected');
-                const icon = r.querySelector('.icon-cell i');
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'chevron-right');
-                    icon.classList.remove('opacity-100', 'text-white');
-                    icon.classList.add('opacity-0');
-                }
             });
             const row = document.getElementById(`row-${id}`);
             if(row) {
                 row.classList.add('selected');
-                const icon = row.querySelector('.icon-cell i');
-                if (icon) {
-                    icon.setAttribute('data-lucide', 'check-circle');
-                    icon.classList.remove('opacity-0');
-                    icon.classList.add('opacity-100', 'text-white');
-                }
             }
             lucide.createIcons();
             const priceInput = document.getElementById(`price-${id}`);
