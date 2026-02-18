@@ -26,6 +26,10 @@
         /* Input overrides */
         input[type="number"]::-webkit-inner-spin-button, 
         input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Smooth Collapse */
+        #import-body { transition: max-height 0.3s ease-out, opacity 0.2s ease-out, padding 0.3s ease-out; overflow: hidden; }
+        .is-collapsed #import-body { max-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0; margin-top: 0; }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen text-gray-900 pb-20">
@@ -55,34 +59,45 @@
     <main class="container mx-auto px-4 max-w-6xl mt-6 space-y-6">
         
         <!-- Smart Import Area (Primary) -->
-        <div class="bg-white border-2 border-indigo-600 rounded-xl shadow-lg p-5 animate-fade-in">
+        <div id="import-section" class="bg-white border-2 border-indigo-600 rounded-xl shadow-lg p-5 animate-fade-in overflow-hidden transition-all">
             <div class="flex flex-col gap-4">
                 <div class="flex items-center justify-between">
                     <h3 class="font-bold text-gray-800 flex items-center gap-2 text-lg">
                         <i data-lucide="clipboard-copy" class="text-indigo-600"></i>
                         価格更新（コピー＆ペースト）
                     </h3>
-                    <a href="https://www.net-japan.co.jp/precious_metal_partner" target="_blank" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 text-sm shadow-sm">
-                        <i data-lucide="external-link" class="w-4 h-4"></i> 公式サイトを開く
-                    </a>
-                </div>
-                
-                <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
-                    <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
-                    <div>
-                        <strong>使い方:</strong> 公式サイトを開き、価格表全体をコピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付け（Ctrl+V）てください。<br>
-                        コンビ（Pt900/K18等）を含む全品目の価格を自動解析して反映します。
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadMarketData()" id="btn-load-memory-header" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                            <i data-lucide="download-cloud" class="w-4 h-4"></i> 相場を復元
+                        </button>
+                        <button onclick="toggleImportArea()" id="btn-toggle-import" class="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 px-3 py-2 rounded-lg font-bold transition-colors flex items-center gap-2">
+                            <span id="toggle-text">折りたたむ</span>
+                            <i id="toggle-icon" data-lucide="chevron-up" class="w-4 h-4"></i>
+                        </button>
+                        <a href="https://www.net-japan.co.jp/precious_metal_partner" target="_blank" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-4 py-2 rounded-lg font-bold transition-colors flex items-center gap-2 text-sm shadow-sm hidden md:flex">
+                            <i data-lucide="external-link" class="w-4 h-4"></i> 公式サイト
+                        </a>
                     </div>
                 </div>
+                
+                <div id="import-body" class="space-y-4">
+                    <div class="bg-blue-50 text-blue-800 text-xs p-3 rounded-lg flex items-start gap-2">
+                        <i data-lucide="info" class="w-4 h-4 mt-0.5 flex-shrink-0"></i>
+                        <div>
+                            <strong>使い方:</strong> 公式サイトを開き、価格表全体をコピー（Ctrl+A → Ctrl+C）して、下の枠に貼り付け（Ctrl+V）てください。<br>
+                            コンビ（Pt900/K18等）を含む全品目の価格を自動解析して反映します。
+                        </div>
+                    </div>
 
-                <div class="relative group">
-                    <textarea id="import-text" 
-                        placeholder="ここに貼り付け (Ctrl+V) して解析ボタンを押す" 
-                        class="w-full p-4 pr-32 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 h-32 text-sm font-mono resize-none transition-all placeholder-gray-400"></textarea>
-                    
-                    <button onclick="parseImportText()" class="absolute bottom-4 right-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 hover:shadow-lg transition-all flex items-center gap-2">
-                        <i data-lucide="wand-2" class="w-4 h-4"></i> 解析・反映
-                    </button>
+                    <div class="relative group">
+                        <textarea id="import-text" 
+                            placeholder="ここに貼り付け (Ctrl+V) して解析ボタンを押す" 
+                            class="w-full p-4 pr-32 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-indigo-100 focus:border-indigo-500 h-32 text-sm font-mono resize-none transition-all placeholder-gray-400 bg-gray-50"></textarea>
+                        
+                        <button onclick="parseImportText()" class="absolute bottom-4 right-4 bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 hover:shadow-lg transition-all flex items-center gap-2">
+                            <i data-lucide="wand-2" class="w-4 h-4"></i> 解析・反映
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Memory Functions -->
@@ -500,7 +515,7 @@
                 { id: 'pt900_k18_9_1', label: 'Pt900/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT900/K18', '900/K18'], ratio: ['90:10', '9:1'], exclude: [] },
                 { id: 'pt850_k18_1_9', label: 'Pt850/K18 (1:9)', sub: 'Pt10% : Au90%', match: ['PT850/K18', '850/K18'], ratio: ['10:90', '1:9'], exclude: [] },
                 { id: 'pt850_k18_5_5', label: 'Pt850/K18 半々', sub: 'Pt50% : Au50%', match: ['PT850/K18', '850/K18'], ratio: ['50:50', '5:5', '半々'], exclude: [] },
-                { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['PT850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
+                { id: 'pt850_k18_9_1', label: 'Pt850/K18 (9:1)', sub: 'Pt90% : Au10%', match: ['Pt850/K18', '850/K18'], ratio: ['90:10', '9:1'], exclude: [] },
             ],
             palladium: [
                 { id: 'pd_ig', label: 'インゴット (Pd)', match: ['PD', 'INGOT', 'パラジウム'], exclude: [] },
@@ -516,6 +531,7 @@
         let appraisalList = [];
         let appraisalHistory = [];
         let deleteTargetId = null;
+        let isImportCollapsed = false;
 
         window.onload = () => {
             lucide.createIcons();
@@ -530,6 +546,30 @@
                 calculate();
             });
         };
+
+        // UI折りたたみ制御
+        function toggleImportArea(forceState = null) {
+            const section = document.getElementById('import-section');
+            const toggleText = document.getElementById('toggle-text');
+            const toggleIcon = document.getElementById('toggle-icon');
+            
+            if (forceState !== null) {
+                isImportCollapsed = forceState;
+            } else {
+                isImportCollapsed = !isImportCollapsed;
+            }
+
+            if (isImportCollapsed) {
+                section.classList.add('is-collapsed');
+                toggleText.innerText = '展開';
+                toggleIcon.setAttribute('data-lucide', 'chevron-down');
+            } else {
+                section.classList.remove('is-collapsed');
+                toggleText.innerText = '折りたたむ';
+                toggleIcon.setAttribute('data-lucide', 'chevron-up');
+            }
+            lucide.createIcons();
+        }
 
         function generateTables() {
             createTableRows('gold', 'table-gold');
@@ -741,7 +781,6 @@
         }
 
         function saveAndClear() {
-            // executeSaveHistoryと同様の処理
             const now = new Date();
             const id = Date.now();
             const date = now.toLocaleString('ja-JP');
@@ -813,7 +852,9 @@
             });
             if (filledCount > 0) {
                 document.getElementById('import-text').value = '';
-                showModal('check-circle', '解析完了', `価格情報を抽出・更新しました。<br>現在 ${filledCount} 項目が入力されています。`, 'text-green-600');
+                saveMarketData(true); // サイレント保存
+                toggleImportArea(true); // 自動で折りたたむ
+                showModal('check-circle', '解析完了・保存済', `価格情報を更新し、ブラウザに保存しました。<br>現在 ${filledCount} 項目が入力されています。`, 'text-green-600');
             } else {
                 showModal('alert-triangle', '解析失敗', '有効な価格情報が見つかりませんでした。', 'text-red-500');
             }
@@ -857,7 +898,7 @@
             }
         }
 
-        function saveMarketData() {
+        function saveMarketData(silent = false) {
             const data = {};
             document.querySelectorAll('input[id^="price-"]').forEach(input => data[input.id] = input.value);
             data['manual-gold'] = document.getElementById('manual-gold').value;
@@ -868,7 +909,7 @@
             localStorage.setItem('marketData', JSON.stringify(data));
             localStorage.setItem('marketDataTime', timestamp);
             updateMemoryStatus();
-            showModal('check-circle', '保存完了', '現在の相場価格をブラウザに記憶しました。', 'text-blue-600');
+            if(!silent) showModal('check-circle', '保存完了', '現在の相場価格をブラウザに記憶しました。', 'text-blue-600');
         }
 
         function loadMarketData() {
@@ -886,14 +927,17 @@
         function updateMemoryStatus() {
             const time = localStorage.getItem('marketDataTime');
             const btn = document.getElementById('btn-load-memory');
+            const btnHeader = document.getElementById('btn-load-memory-header');
             const display = document.getElementById('memory-timestamp');
             if (time) {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnHeader.disabled = false;
                 display.innerHTML = `<i data-lucide="clock" class="w-3 h-3 inline mr-1"></i> 相場メモリ: ${time}`;
             } else {
                 btn.disabled = true;
                 btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btnHeader.disabled = true;
                 display.innerText = '相場メモリ: 未保存';
             }
             lucide.createIcons();
